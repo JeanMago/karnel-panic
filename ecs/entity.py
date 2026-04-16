@@ -1,6 +1,14 @@
 class Entity:
+    """Base leve: estado editável em `properties`; comportamento em subclasses."""
+
     def __init__(self):
         self.properties = {}
+
+    def debug_label(self) -> str:
+        return self.__class__.__name__
+
+    def is_hostile(self) -> bool:
+        return bool(self.properties.get("hostile"))
 
     def update(self):
         pass
