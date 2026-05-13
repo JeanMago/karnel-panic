@@ -95,32 +95,139 @@ class DebuggerGun:
 
     def smart_patch(self, entity):
         p = entity.properties
+        label = entity.debug_label()
 
-        if "reference" in p and p.get("reference") is None:
-            p["reference"] = "@heap::valid#1"
+        # Caso 1: NullPointer sem referência
+        if label == "NullPointer" and p.get("reference") is None:
+            # Simulando: if (ref == null) ref = @heap_alloc()
+            p["reference"] = "@heap::fixed_addr"
             if "visible" in p:
                 p["visible"] = True
-            if p.get("speed") is None or p.get("speed") == 0:
-                p["speed"] = 20
             self.corruption.increase(0.08)
-            return "reference"
+            return "IF (ref == NULL) -> ref = @heap::fixed"
 
-        if self.patch(
-            entity,
-            "speed",
-            lambda v: v is None or (isinstance(v, (int, float)) and v < 1),
-            5,
-        ):
-            return "speed"
+        # Caso 2: Velocidade nula ou negativa (travamento)
+        if "speed" in p and (p["speed"] is None or (isinstance(p["speed"], (int, float)) and p["speed"] <= 0)):
+            # Simulando: if (speed <= 0) speed = DEFAULT_SPEED
+            p["speed"] = 5
+            self.corruption.increase(0.05)
+            return "IF (speed <= 0) -> speed = 5"
 
-        if "stack_depth" in p:
+        # Caso 3: StackOverflow com profundidade excessiva
+        if label == "StackOverflow" and "stack_depth" in p:
             try:
                 cur = int(p.get("stack_depth", 1))
             except (TypeError, ValueError):
                 cur = 1
-            if cur > 1 and self.patch(
-                entity, "stack_depth", lambda v: True, max(1, cur - 2)
-            ):
-                return "stack_depth"
+            if cur > 1:
+                # Simulando: while (depth > 1) depth--
+                p["stack_depth"] = max(1, cur - 1)
+                self.corruption.increase(0.06)
+                return "WHILE (stack > 1) -> stack--"
+
+        # Caso 4: InfiniteLoop com velocidade muito alta (instável)
+        if label == "InfiniteLoop" and "speed" in p:
+            try:
+                sp = float(p.get("speed", 0))
+            except (TypeError, ValueError):
+                sp = 0
+            if sp > 10:
+                p["speed"] = 2.5
+                self.corruption.increase(0.04)
+                return "IF (speed > 10) -> speed = 2.5 (throttle)"
 
         return None
+
+    def manual_patch(self, entity, command_str: str) -> str:
+        """
+        Tenta parsear comandos de código.
+        Formatos suportados:
+        - prop = valor
+        - prop += valor
+        - prop -= valor
+        - if prop == valor: prop2 = valor2
+        """
+        command_str = command_str.strip()
+        self.corruption.increase(0.1)
+
+        try:
+            # Caso IF: if prop == val: prop2 = val2
+            if command_str.startswith("if "):
+                parts = command_str[3:].split(":")
+                if len(parts) != 2:
+                    return "Erro: Formato IF incorreto. Use 'if p == v: p2 = v2'"
+                
+                cond_part = parts[0].strip()
+                action_part = parts[1].strip()
+
+                # Simplificação: apenas == suportado por enquanto
+                if "==" not in cond_part:
+                    return "Erro: Apenas '==' suportado no IF."
+                
+                c_key, c_val = [p.strip() for p in cond_part.split("==")]
+                if c_key not in entity.properties:
+                    return f"Erro: {c_key} não existe."
+                
+                # Checa condição
+                current_val = entity.properties[c_key]
+                target_val = self._parse_val(c_val)
+
+                if current_val == target_val:
+                    return self._execute_assignment(entity, action_part)
+                else:
+                    return f"IF {c_key}=={target_val} -> False (atual: {current_val})"
+
+            # Caso Atribuição Direta ou Operação
+            return self._execute_assignment(entity, command_str)
+            
+        except Exception as e:
+            return f"Erro: {str(e)}"
+
+    def _execute_assignment(self, entity, part: str) -> str:
+        if "+=" in part:
+            op = "+="
+        elif "-=" in part:
+            op = "-="
+        elif "=" in part:
+            op = "="
+        else:
+            return "Erro: Operação inválida (use =, +=, -=)"
+
+        key, val_str = [p.strip() for p in part.split(op)]
+        if key not in entity.properties:
+            return f"Erro: {key} não existe."
+
+        val = self._parse_val(val_str)
+        
+        if op == "=":
+            entity.properties[key] = val
+        elif op == "+=":
+            if not isinstance(entity.properties[key], (int, float)):
+                return f"Erro: {key} não é numérico."
+            entity.properties[key] += val
+        elif op == "-=":
+            if not isinstance(entity.properties[key], (int, float)):
+                return f"Erro: {key} não é numérico."
+            entity.properties[key] -= val
+
+        return f"OK: {key} {op} {val}"
+
+    def _parse_val(self, val_str: str):
+        val_str = val_str.strip()
+        if val_str.isdigit():
+            return int(val_str)
+        try:
+            return float(val_str)
+        except ValueError:
+            pass
+        
+        if val_str.lower() == "true": return True
+        if val_str.lower() == "false": return False
+        if val_str.lower() == "none" or val_str.lower() == "null": return None
+        
+        # Remove aspas se houver
+        if (val_str.startswith("'") and val_str.endswith("'")) or \
+           (val_str.startswith('"') and val_str.endswith('"')):
+            return val_str[1:-1]
+            
+        return val_str

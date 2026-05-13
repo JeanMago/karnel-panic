@@ -58,16 +58,21 @@ class NullPointer(Entity):
                 self.properties["y"] -= speed
 
     def render(self, screen):
-        if not self.properties.get("visible"):
+        import random
+        x, y = self.properties["x"], self.properties["y"]
+        w, h = self.properties["w"], self.properties["h"]
+
+        if not self._is_resolved():
+            # Desenha um "fantasma" de interferência se não resolvido
+            if random.random() < 0.3:
+                for _ in range(5):
+                    rx = x + random.randint(-10, 10)
+                    ry = y + random.randint(-10, 10)
+                    pygame.draw.rect(screen, (40, 40, 40), (rx, ry, w, h), 1)
             return
 
         pygame.draw.rect(
             screen,
             self.properties["color"],
-            (
-                self.properties["x"],
-                self.properties["y"],
-                self.properties["w"],
-                self.properties["h"],
-            ),
+            (x, y, w, h),
         )
