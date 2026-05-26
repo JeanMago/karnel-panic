@@ -73,21 +73,19 @@ class StackOverflow(Entity):
             g["ox"] = g.get("ox", 0) + math.sin(self._phase + 0.4) * 0.8 * dt
 
     def render(self, screen):
-        base = (
-            int(self.properties["x"]),
-            int(self.properties["y"]),
-            self.properties["w"],
-            self.properties["h"],
-        )
-        for g in self.ghosts:
-            rect = (
-                base[0] + int(g["ox"]),
-                base[1] + int(g["oy"]),
-                base[2],
-                base[3],
-            )
-            s = pygame.Surface((rect[2], rect[3]), pygame.SRCALPHA)
-            s.fill((*self.properties["color"], g.get("a", 100)))
-            screen.blit(s, (rect[0], rect[1]))
+        x, y = self.properties["x"], self.properties["y"]
+        w, h = self.properties["w"], self.properties["h"]
+        color = self.properties["color"]
+        
+        # Desenha a "Pilha" (base)
+        for i in range(3):
+            pygame.draw.rect(screen, color, (x, y + i * (h // 3), w, h // 3 - 1))
+        pygame.draw.rect(screen, (255, 255, 255), (x, y, w, h), 1)
 
-        pygame.draw.rect(screen, self.properties["color"], base)
+        # Renderizar fantasmas (camadas que transbordam)
+        for g in self.ghosts:
+            gx, gy = x + int(g["ox"]), y + int(g["oy"])
+            s = pygame.Surface((w, h), pygame.SRCALPHA)
+            s.fill((*color, g.get("a", 100)))
+            screen.blit(s, (gx, gy))
+            pygame.draw.rect(screen, (255, 255, 255, 50), (gx, gy, w, h), 1)

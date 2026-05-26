@@ -1,4 +1,5 @@
 import pygame
+import math
 from ecs.entity import Entity
 
 
@@ -61,18 +62,29 @@ class NullPointer(Entity):
         import random
         x, y = self.properties["x"], self.properties["y"]
         w, h = self.properties["w"], self.properties["h"]
+        color = self.properties["color"]
 
         if not self._is_resolved():
-            # Desenha um "fantasma" de interferência se não resolvido
-            if random.random() < 0.3:
-                for _ in range(5):
-                    rx = x + random.randint(-10, 10)
-                    ry = y + random.randint(-10, 10)
-                    pygame.draw.rect(screen, (40, 40, 40), (rx, ry, w, h), 1)
+            # Fragmento instável (Dangling)
+            for _ in range(12):
+                rx = x + random.randint(-5, w)
+                ry = y + random.randint(-5, h)
+                rw = random.randint(2, 8)
+                rh = random.randint(2, 8)
+                # Cores de "erro"
+                c = random.choice([(40, 0, 0), (80, 20, 20), (20, 20, 20)])
+                pygame.draw.rect(screen, c, (rx, ry, rw, rh))
             return
 
-        pygame.draw.rect(
-            screen,
-            self.properties["color"],
-            (x, y, w, h),
-        )
+        # Fragmento Perseguidor (Resolved)
+        # Corpo central fragmentado
+        for i in range(5):
+            off_x = math.sin(pygame.time.get_ticks() * 0.02 + i) * 3
+            off_y = math.cos(pygame.time.get_ticks() * 0.02 + i) * 3
+            pygame.draw.rect(screen, color, (x + off_x, y + off_y, w, h), 1)
+        
+        # Partículas de rastro
+        for _ in range(4):
+            px = x + random.randint(0, w)
+            py = y + random.randint(0, h)
+            pygame.draw.rect(screen, (255, 0, 0), (px, py, 4, 4))

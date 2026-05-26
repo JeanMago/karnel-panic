@@ -1,7 +1,7 @@
 import pygame
 
 from config import FPS, RESOLUTIONS
-from persistence.storage import save_settings
+from persistence.storage import save_settings, load_state
 
 
 def show_menu(game):
@@ -10,7 +10,7 @@ def show_menu(game):
     font_title = pygame.font.SysFont("monospace", 60, bold=True)
     font_item = pygame.font.SysFont("monospace", 30)
 
-    options = ["Iniciar Sistema", "Configurações", "Manual (Como Jogar)", "Sair"]
+    options = ["Novo Jogo", "Seleção de Fases", "Configurações", "Manual (Como Jogar)", "Sair"]
     selected_idx = 0
 
     while True:
@@ -18,19 +18,41 @@ def show_menu(game):
         screen.fill((10, 10, 15))
 
         title_surf = font_title.render("Kernel.panic()", True, (0, 255, 0))
-        screen.blit(title_surf, (sw // 2 - title_surf.get_width() // 2, sh // 4))
+        screen.blit(title_surf, (sw // 2 - title_surf.get_width() // 2, sh // 5))
 
+        option_rects = []
         for i, option in enumerate(options):
             color = (0, 255, 0) if i == selected_idx else (100, 100, 100)
             text = f"> {option} <" if i == selected_idx else f"  {option}  "
             item_surf = font_item.render(text, True, color)
-            screen.blit(item_surf, (sw // 2 - item_surf.get_width() // 2, sh // 2 + i * 50))
+            x = sw // 2 - item_surf.get_width() // 2
+            y = sh // 2 - 50 + i * 50
+            screen.blit(item_surf, (x, y))
+            option_rects.append(pygame.Rect(x, y, item_surf.get_width(), item_surf.get_height()))
 
         pygame.display.flip()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "quit"
+            
+            if event.type == pygame.MOUSEMOTION:
+                for i, rect in enumerate(option_rects):
+                    if rect.collidepoint(event.pos):
+                        selected_idx = i
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    for i, rect in enumerate(option_rects):
+                        if rect.collidepoint(event.pos):
+                            selected_idx = i
+                            if i == 0: # Novo Jogo
+                                if confirm_new_game(game): return "start"
+                            if i == 1: return "select_level"
+                            if i == 2: return "settings"
+                            if i == 3: return "tutorial"
+                            if i == 4: return "quit"
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
                     pygame.display.toggle_fullscreen()
@@ -40,13 +62,45 @@ def show_menu(game):
                     selected_idx = (selected_idx + 1) % len(options)
                 elif event.key == pygame.K_RETURN:
                     if selected_idx == 0:
-                        return "start"
-                    if selected_idx == 1:
-                        return "settings"
-                    if selected_idx == 2:
-                        return "tutorial"
-                    if selected_idx == 3:
-                        return "quit"
+                        if confirm_new_game(game): return "start"
+                    if selected_idx == 1: return "select_level"
+                    if selected_idx == 2: return "settings"
+                    if selected_idx == 3: return "tutorial"
+                    if selected_idx == 4: return "quit"
+        clock.tick(FPS)
+
+def confirm_new_game(game):
+    """Tela de confirmação para não apagar o save sem querer."""
+    screen = game.screen
+    clock = game.clock
+    font = pygame.font.SysFont("monospace", 24)
+    
+    while True:
+        sw, sh = screen.get_width(), screen.get_height()
+        screen.fill((20, 10, 10)) # Fundo avermelhado de alerta
+        
+        msg = font.render("INICIAR NOVO SISTEMA? O PROGRESSO ATUAL SERÁ PERDIDO.", True, (255, 255, 255))
+        screen.blit(msg, (sw // 2 - msg.get_width() // 2, sh // 3))
+        
+        # Opções: SIM ou NÃO
+        opts = ["[S] SIM, REINICIAR", "[N] NÃO, VOLTAR"]
+        for i, opt in enumerate(opts):
+            col = (255, 100, 100) if i == 0 else (100, 255, 100)
+            surf = font.render(opt, True, col)
+            screen.blit(surf, (sw // 2 - surf.get_width() // 2, sh // 2 + i * 40))
+            
+        pygame.display.flip()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); import sys; sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_s: return True
+                if event.key == pygame.K_n or event.key == pygame.K_ESCAPE: return False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                # Simplificado: clique na metade de cima da tela confirma, baixo cancela
+                if event.pos[1] > sh // 2: return False
+                else: return True
         clock.tick(FPS)
 
 
@@ -56,7 +110,6 @@ def show_settings(game):
     font_title = pygame.font.SysFont("monospace", 40, bold=True)
     font_item = pygame.font.SysFont("monospace", 26)
 
-    # State local para o menu
     res_idx = 0
     for i, res in enumerate(RESOLUTIONS):
         if res == (game.width, game.height):
@@ -64,8 +117,6 @@ def show_settings(game):
             break
     
     limit_fps = game.limit_fps
-    
-    # 0: Resolução, 1: Limite FPS, 2: Salvar e Voltar
     menu_idx = 0
 
     while True:
@@ -75,23 +126,31 @@ def show_settings(game):
         title_surf = font_title.render("CONFIGURAÇÕES", True, (0, 255, 255))
         screen.blit(title_surf, (sw // 2 - title_surf.get_width() // 2, 60))
 
+        item_rects = []
+
         # Opção 1: Resolução
         res_text = f"Resolução: < {RESOLUTIONS[res_idx][0]}x{RESOLUTIONS[res_idx][1]} >"
         res_col = (0, 255, 0) if menu_idx == 0 else (150, 150, 150)
         res_surf = font_item.render(res_text, True, res_col)
-        screen.blit(res_surf, (sw // 2 - res_surf.get_width() // 2, 200))
+        rx, ry = sw // 2 - res_surf.get_width() // 2, 200
+        screen.blit(res_surf, (rx, ry))
+        item_rects.append(pygame.Rect(rx, ry, res_surf.get_width(), res_surf.get_height()))
 
         # Opção 2: FPS
         fps_status = "LIGADO (60)" if limit_fps else "DESLIGADO (ILIMITADO)"
         fps_text = f"Limite de FPS: {fps_status}"
         fps_col = (0, 255, 0) if menu_idx == 1 else (150, 150, 150)
         fps_surf = font_item.render(fps_text, True, fps_col)
-        screen.blit(fps_surf, (sw // 2 - fps_surf.get_width() // 2, 280))
+        fx, fy = sw // 2 - fps_surf.get_width() // 2, 280
+        screen.blit(fps_surf, (fx, fy))
+        item_rects.append(pygame.Rect(fx, fy, fps_surf.get_width(), fps_surf.get_height()))
 
         # Opção 3: Salvar
         save_col = (0, 255, 0) if menu_idx == 2 else (150, 150, 150)
         save_surf = font_item.render("[ SALVAR E VOLTAR ]", True, save_col)
-        screen.blit(save_surf, (sw // 2 - save_surf.get_width() // 2, 400))
+        sx, sy = sw // 2 - save_surf.get_width() // 2, 400
+        screen.blit(save_surf, (sx, sy))
+        item_rects.append(pygame.Rect(sx, sy, save_surf.get_width(), save_surf.get_height()))
 
         pygame.display.flip()
 
@@ -100,6 +159,36 @@ def show_settings(game):
                 pygame.quit()
                 import sys
                 sys.exit()
+
+            if event.type == pygame.MOUSEMOTION:
+                for i, rect in enumerate(item_rects):
+                    if rect.collidepoint(event.pos):
+                        menu_idx = i
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    for i, rect in enumerate(item_rects):
+                        if rect.collidepoint(event.pos):
+                            menu_idx = i
+                            if i == 0:
+                                res_idx = (res_idx + 1) % len(RESOLUTIONS)
+                            elif i == 1:
+                                limit_fps = not limit_fps
+                            elif i == 2:
+                                # Salvar
+                                new_w, new_h = RESOLUTIONS[res_idx]
+                                old_w, old_h = game.width, game.height
+                                game.width, game.height = new_w, new_h
+                                game.limit_fps = limit_fps
+                                save_settings(new_w, new_h, limit_fps)
+                                if (new_w, new_h) != (old_w, old_h):
+                                    pygame.display.quit()
+                                    pygame.display.init()
+                                    game.screen = pygame.display.set_mode((new_w, new_h), pygame.RESIZABLE | pygame.SCALED)
+                                    pygame.display.set_caption("Kernel.panic()")
+                                    screen = game.screen
+                                return
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
                     pygame.display.toggle_fullscreen()
@@ -108,34 +197,23 @@ def show_settings(game):
                 elif event.key == pygame.K_DOWN:
                     menu_idx = (menu_idx + 1) % 3
                 elif event.key == pygame.K_LEFT:
-                    if menu_idx == 0:
-                        res_idx = (res_idx - 1) % len(RESOLUTIONS)
+                    if menu_idx == 0: res_idx = (res_idx - 1) % len(RESOLUTIONS)
                 elif event.key == pygame.K_RIGHT:
-                    if menu_idx == 0:
-                        res_idx = (res_idx + 1) % len(RESOLUTIONS)
+                    if menu_idx == 0: res_idx = (res_idx + 1) % len(RESOLUTIONS)
                 elif event.key == pygame.K_RETURN:
-                    if menu_idx == 0:
-                        # Enter na resolução também pode avançar
-                        res_idx = (res_idx + 1) % len(RESOLUTIONS)
-                    elif menu_idx == 1:
-                        limit_fps = not limit_fps
+                    if menu_idx == 0: res_idx = (res_idx + 1) % len(RESOLUTIONS)
+                    elif menu_idx == 1: limit_fps = not limit_fps
                     elif menu_idx == 2:
-                        # Aplicar e Salvar
                         new_w, new_h = RESOLUTIONS[res_idx]
                         old_w, old_h = game.width, game.height
-                        
-                        game.width = new_w
-                        game.height = new_h
+                        game.width, game.height = new_w, new_h
                         game.limit_fps = limit_fps
                         save_settings(new_w, new_h, limit_fps)
-                        
-                        # Se a resolução mudou, resetamos o subsistema de vídeo para evitar erro de renderer
                         if (new_w, new_h) != (old_w, old_h):
                             pygame.display.quit()
                             pygame.display.init()
                             game.screen = pygame.display.set_mode((new_w, new_h), pygame.RESIZABLE | pygame.SCALED)
                             pygame.display.set_caption("Kernel.panic()")
-                            # Atualiza a referência local da tela no menu
                             screen = game.screen
                         return
                 elif event.key == pygame.K_ESCAPE:
@@ -148,61 +226,136 @@ def show_tutorial(game):
     clock = game.clock
     font_title = pygame.font.SysFont("monospace", 40, bold=True)
     font_text = pygame.font.SysFont("monospace", 18)
+    font_small = pygame.font.SysFont("monospace", 14)
 
-    tutorial_lines = [
-        "--- MANUAL DE OPERAÇÃO DA DEBUGGER GUN ---",
-        "",
-        "SISTEMA: A Integridade do Kernel está comprometida.",
-        "Corrupção aumenta ao usar ferramentas e ao contato com falhas.",
-        "",
-        "CONTROLES BÁSICOS:",
-        "  [ W,A,S,D ] Movimentação de baixo nível",
-        "  [ MOUSE ] Selecionar Objeto / Inspecionar Memória",
-        "",
-        "DEBUGGER GUN (CLIPBOARD):",
-        "  [ TAB ] Alterna entre Slot A e B",
-        "  [ X ] CUT (Recortar valor da propriedade)",
-        "  [ V ] PASTE (Colar valor no alvo selecionado)",
-        "  [ P ] SMART PATCH (Auto-reparo sugerido)",
-        "",
-        "PATCH POR CÓDIGO [ TECLA C ]:",
-        "  Abre o console de injeção direta. Exemplos:",
-        "  - speed = 10         (Atribuição)",
-        "  - speed += 2         (Incremento)",
-        "  - if speed == 0: speed = 5 (Condicional)",
-        "",
-        "SISTEMA DE CORRUPÇÃO:",
-        "  - Quanto maior o nível, mais o sistema falha.",
-        "  - Efeitos: Glitches visuais, instabilidade física.",
-        "  - Se chegar a 100%, ocorre o KERNEL PANIC (Fim de Jogo).",
-        "",
-        "ESC — Voltar ao menu.",
+    pages = [
+        # Página 1: O Básico
+        [
+            "--- GUIA RÁPIDO: MOVIMENTAÇÃO E RECORTE ---",
+            "",
+            "OBJETIVO: Você é um Sentinela que deve consertar o sistema.",
+            "Conserte os erros para abrir a Saída (Terminal de Saída).",
+            "",
+            "CONTROLES DE MOVIMENTO:",
+            "  [ W,A,S,D ] Mover o Sentinela pelo sistema.",
+            "  [ MOUSE ] Clique em qualquer objeto para selecioná-lo.",
+            "",
+            "FERRAMENTA DE RECORTE (Debugger Gun):",
+            "  Sua arma principal não atira balas, ela altera propriedades.",
+            "  [ X ] RECORTE: Rouba uma propriedade do alvo (ex: velocidade).",
+            "  [ V ] COLAR: Aplica o valor roubado em um novo alvo.",
+            "  [ TAB ] Muda o 'clipe' (você tem dois espaços: A e B).",
+            "  [ P ] REPARO RÁPIDO: O sistema tenta sugerir uma correção.",
+            "",
+            "DICA: Você pode roubar sua própria velocidade ou de inimigos!"
+        ],
+        # Página 2: Terminal de Código [C]
+        [
+            "--- TERMINAL DE CÓDIGO [ TECLA C ] ---",
+            "",
+            "Digite comandos para manipular o alvo selecionado:",
+            "",
+            "ATALHOS ÚTEIS (Shortcuts):",
+            "  freeze / unfreeze   (Congela ou solta o alvo)",
+            "  kill                (Termina o processo imediatamente)",
+            "  heal                (Restaura a vida do alvo para 100%)",
+            "  invert              (Inverte as cores visuais do alvo)",
+            "  teleport x y        (Ex: teleport 500 300)",
+            "  scale fator         (Ex: scale 2.0 para dobrar o tamanho)",
+            "",
+            "COMANDOS DE ATRIBUIÇÃO:",
+            "  speed = 10          |  speed += 2  |  load -= 50",
+            "  buffer_size = 500   |  visible = false",
+            "",
+            "COMANDO DE INSPEÇÃO:",
+            "  dump                (Revela todas as propriedades)",
+        ],
+        # Página 3: Guia de Erros (Inimigos)
+        [
+            "--- CONHECENDO OS ERROS DO SISTEMA ---",
+            "",
+            "1. NullPointer (Quadrado Vermelho Fantasma)",
+            "   Eles são instáveis. Só param quando recebem uma 'referência'.",
+            "   COMO PARAR: Use o Smart Patch [P] ou cole um Token nele.",
+            "",
+            "2. Buffer Overflow (Barra de Carga Laranja/Vermelha)",
+            "   Ele explode em fúria se a carga (Load) for maior que o espaço.",
+            "   COMO PARAR: Aumente o 'buffer_size' ou diminua o 'load'.",
+            "",
+            "3. Memory Leak (Rastro Verde)",
+            "   Ele vai sujando o sistema por onde passa.",
+            "   COMO PARAR: Use o terminal [C] e digite: leak_rate = 0",
+            "",
+            "4. Erros de Loop e Pilha (InfiniteLoop / StackOverflow)",
+            "   Se movem em círculos ou se multiplicam sem parar.",
+            "   COMO PARAR: Zere a 'speed' ou diminua o 'stack_depth'."
+        ],
+        # Página 4: Combate contra Chefes
+        [
+            "--- COMBATE CONTRA PROCESSOS MESTRES (BOSSES) ---",
+            "",
+            "Bosses são protegidos contra o comando 'kill' direto.",
+            "Para derrotá-los, use sua criatividade lógica:",
+            "",
+            "1. LOGIC BURST [ TECLA P ]:",
+            "   O Smart Patch em um Boss causa um surto de lógica",
+            "   que remove uma grande fatia de vida (-50 HP).",
+            "",
+            "2. INJEÇÃO DE DADOS [ TECLA V ]:",
+            "   Se você tiver um NÚMERO no clipe (ex: speed de 100),",
+            "   COLE no Boss para causar dano por injeção.",
+            "",
+            "3. ATAQUE PELO TERMINAL [ TECLA C ]:",
+            "   Você pode diminuir a 'health' diretamente no terminal,",
+            "   ou atacar fraquezas específicas (ex: zerar a 'speed').",
+            "",
+            "DICA: Fique atento ao 'Flash' branco, ele indica dano!"
+        ]
     ]
+    
+    current_page = 0
 
     while True:
-        sw = screen.get_width()
+        sw, sh = screen.get_width(), screen.get_height()
         screen.fill((10, 10, 15))
 
-        title_surf = font_title.render("Manual do Sistema", True, (0, 255, 255))
+        titles = ["Controles e Ferramentas", "Terminal de Código", "Guia de Erros"]
+        title_surf = font_title.render(titles[current_page], True, (0, 255, 255))
         screen.blit(title_surf, (sw // 2 - title_surf.get_width() // 2, 40))
 
-        for i, line in enumerate(tutorial_lines):
+        # Desenhar conteúdo da página
+        for i, line in enumerate(pages[current_page]):
             color = (200, 200, 200)
-            if line.startswith("  [") or line.startswith("  MOUSE"):
+            if line.startswith("  [") or line.startswith("  MOUSE") or "COMO PARAR:" in line:
                 color = (0, 255, 0)
-            if "---" in line:
+            if "---" in line or (line and line[0].isdigit()):
                 color = (255, 255, 0)
+            if "speed =" in line or "dump" in line or "load -=" in line or "freeze" in line or "kill" in line or "teleport" in line or "LOGIC BURST" in line or "INJEÇÃO" in line:
+                color = (0, 200, 255) # Cor de código/comando
+                
             text_surf = font_text.render(line, True, color)
             screen.blit(text_surf, (40, 100 + i * 24))
+
+        # Rodapé de navegação
+        nav_text = f"Página {current_page + 1} de {len(pages)}  |  [<- / ->] Mudar Aba  |  [ESC] Voltar"
+        nav_surf = font_small.render(nav_text, True, (100, 100, 100))
+        screen.blit(nav_surf, (sw // 2 - nav_surf.get_width() // 2, sh - 40))
 
         pygame.display.flip()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1: # Clique para avançar
+                    current_page = (current_page + 1) % len(pages)
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
                     pygame.display.toggle_fullscreen()
+                elif event.key == pygame.K_LEFT:
+                    current_page = (current_page - 1) % len(pages)
+                elif event.key == pygame.K_RIGHT:
+                    current_page = (current_page + 1) % len(pages)
                 elif event.key == pygame.K_ESCAPE:
                     return True
         clock.tick(FPS)
@@ -213,6 +366,10 @@ def show_level_selection(game):
     clock = game.clock
     font_title = pygame.font.SysFont("monospace", 40, bold=True)
     font_item = pygame.font.SysFont("monospace", 26)
+
+    # Carrega o progresso salvo
+    state = load_state()
+    max_level = int(state.get("max_level", 1))
 
     levels = [
         "Fase 1: The Heap",
@@ -228,26 +385,58 @@ def show_level_selection(game):
         title_surf = font_title.render("Seleção de Sistema", True, (0, 255, 255))
         screen.blit(title_surf, (sw // 2 - title_surf.get_width() // 2, sh // 6))
 
+        level_rects = []
         for i, level in enumerate(levels):
-            color = (0, 255, 0) if i == selected_idx else (100, 100, 100)
-            text = f"> {level} <" if i == selected_idx else f"  {level}  "
-            item_surf = font_item.render(text, True, color)
-            screen.blit(item_surf, (sw // 2 - item_surf.get_width() // 2, sh // 2 - 40 + i * 48))
+            is_locked = (i + 1) > max_level
+            
+            if is_locked:
+                color = (40, 40, 40)
+                display_text = f"[ BLOQUEADO ]"
+            else:
+                color = (0, 255, 0) if i == selected_idx else (100, 100, 100)
+                display_text = f"> {level} <" if i == selected_idx else f"  {level}  "
+            
+            item_surf = font_item.render(display_text, True, color)
+            x, y = sw // 2 - item_surf.get_width() // 2, sh // 2 - 40 + i * 48
+            screen.blit(item_surf, (x, y))
+            
+            # Guardamos se está bloqueado junto com o retângulo
+            rect = pygame.Rect(x, y, item_surf.get_width(), item_surf.get_height())
+            level_rects.append((rect, is_locked))
 
         pygame.display.flip()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
+            
+            if event.type == pygame.MOUSEMOTION:
+                for i, (rect, locked) in enumerate(level_rects):
+                    if rect.collidepoint(event.pos) and not locked:
+                        selected_idx = i
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    for i, (rect, locked) in enumerate(level_rects):
+                        if rect.collidepoint(event.pos) and not locked:
+                            return i + 1
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
                     pygame.display.toggle_fullscreen()
                 elif event.key == pygame.K_UP:
+                    # Pula bloqueados ao subir
                     selected_idx = (selected_idx - 1) % len(levels)
+                    while (selected_idx + 1) > max_level:
+                        selected_idx = (selected_idx - 1) % len(levels)
                 elif event.key == pygame.K_DOWN:
+                    # Pula bloqueados ao descer
                     selected_idx = (selected_idx + 1) % len(levels)
+                    if (selected_idx + 1) > max_level:
+                        selected_idx = 0
                 elif event.key == pygame.K_RETURN:
-                    return selected_idx + 1
+                    if (selected_idx + 1) <= max_level:
+                        return selected_idx + 1
                 elif event.key == pygame.K_ESCAPE:
                     return None
         clock.tick(FPS)
@@ -262,28 +451,44 @@ def show_pause_menu(game):
     options = ["Retomar Execução", "Voltar ao Menu Principal", "Salvar e Sair"]
     selected_idx = 0
 
-    overlay = pygame.Surface((screen.get_width(), screen.get_height()))
-    overlay.set_alpha(200)
-    overlay.fill((0, 0, 0))
-
     while True:
         sw, sh = screen.get_width(), screen.get_height()
+        overlay = pygame.Surface((sw, sh))
+        overlay.set_alpha(150)
+        overlay.fill((0, 0, 0))
         screen.blit(overlay, (0, 0))
 
         title_surf = font_title.render("SISTEMA PAUSADO", True, (255, 100, 100))
         screen.blit(title_surf, (sw // 2 - title_surf.get_width() // 2, sh // 3))
 
+        option_rects = []
         for i, option in enumerate(options):
             color = (0, 255, 0) if i == selected_idx else (100, 100, 100)
             text = f"> {option} <" if i == selected_idx else f"  {option}  "
             item_surf = font_item.render(text, True, color)
-            screen.blit(item_surf, (sw // 2 - item_surf.get_width() // 2, sh // 2 + i * 50))
+            x, y = sw // 2 - item_surf.get_width() // 2, sh // 2 + i * 50
+            screen.blit(item_surf, (x, y))
+            option_rects.append(pygame.Rect(x, y, item_surf.get_width(), item_surf.get_height()))
 
         pygame.display.flip()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "quit"
+            
+            if event.type == pygame.MOUSEMOTION:
+                for i, rect in enumerate(option_rects):
+                    if rect.collidepoint(event.pos):
+                        selected_idx = i
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    for i, rect in enumerate(option_rects):
+                        if rect.collidepoint(event.pos):
+                            if i == 0: return "resume"
+                            if i == 1: return "menu"
+                            if i == 2: return "save_quit"
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
                     pygame.display.toggle_fullscreen()
@@ -292,12 +497,9 @@ def show_pause_menu(game):
                 elif event.key == pygame.K_DOWN:
                     selected_idx = (selected_idx + 1) % len(options)
                 elif event.key == pygame.K_RETURN:
-                    if selected_idx == 0:
-                        return "resume"
-                    if selected_idx == 1:
-                        return "menu"
-                    if selected_idx == 2:
-                        return "save_quit"
+                    if selected_idx == 0: return "resume"
+                    if selected_idx == 1: return "menu"
+                    if selected_idx == 2: return "save_quit"
                 elif event.key == pygame.K_ESCAPE:
                     return "resume"
         clock.tick(FPS)

@@ -11,6 +11,26 @@ class HUD:
         self.font_small = pygame.font.SysFont("consolas", 12)
         self.font_title = pygame.font.SysFont("consolas", 13, bold=True)
 
+    def draw_aim_link_with_camera(self, screen, player, selected, camera):
+        """Feixe fraco contínuo usando coordenadas da câmera."""
+        if not selected:
+            return
+        try:
+            p_cam = camera.apply((player.properties["x"] + 20, player.properties["y"] + 20))
+            s_cam = camera.apply((selected.properties["x"] + 20, selected.properties["y"] + 20))
+        except:
+            return
+        w, h = screen.get_width(), screen.get_height()
+        surf = pygame.Surface((w, h), pygame.SRCALPHA)
+        pygame.draw.line(surf, (0, 220, 180, 55), p_cam, s_cam, 2)
+        screen.blit(surf, (0, 0))
+
+    def draw_selection_ring_fixed(self, screen, cam_x, cam_y, w, h):
+        """Desenha o anel usando coordenadas já transformadas pela câmera."""
+        pad = 4
+        rect = (cam_x - pad, cam_y - pad, w + pad * 2, h + pad * 2)
+        pygame.draw.rect(screen, (0, 255, 120), rect, 2)
+
     def draw(self, screen, corruption, level_name: str, path_hint: str):
         sw = screen.get_width()
         bar_w = min(360, sw // 2)

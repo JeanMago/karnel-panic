@@ -37,12 +37,12 @@ class DebuggerGun:
         return rows
 
     def peek_cut_key(self, entity) -> str | None:
-        if "speed" in entity.properties:
-            return "speed"
-        if entity.debug_label() == "Player" and "token" in entity.properties:
-            return "token"
-        if "stack_depth" in entity.properties:
-            return "stack_depth"
+        p = entity.properties
+        if "speed" in p: return "speed"
+        if entity.debug_label() == "Player" and "token" in p: return "token"
+        if "stack_depth" in p: return "stack_depth"
+        if "load" in p: return "load"
+        if "leak_rate" in p: return "leak_rate"
         return None
 
     def peek_paste_destination(self, entity) -> str | None:
@@ -65,7 +65,7 @@ class DebuggerGun:
         self.buffers[i] = entity.properties[key]
         self.buffer_props[i] = key
         entity.properties[key] = None
-        self.corruption.increase(0.05)
+        self.corruption.increase(0.02)
         return True
 
     def paste(self, entity, key=None):
@@ -73,11 +73,22 @@ class DebuggerGun:
         src_prop = self._active_prop()
         if buf is None:
             return None
+            
+        # Injeção de Dano em BOSS
+        if entity.properties.get("tipo") == "BOSS":
+            try:
+                # Se colarmos um valor numérico em qualquer lugar do Boss, causa dano
+                val = float(buf)
+                damage = entity.take_damage(20 + abs(val) * 0.1)
+                self.corruption.increase(0.04)
+                return f"INJECTION_DAMAGE: -{damage:.1f} HP"
+            except: pass
+
         dest = key or self._infer_paste_key(entity, src_prop)
         if dest not in entity.properties:
             return None
         entity.properties[dest] = buf
-        self.corruption.increase(0.05)
+        self.corruption.increase(0.02)
         return dest
 
     def _infer_paste_key(self, entity, source_prop):
@@ -90,50 +101,70 @@ class DebuggerGun:
         if not condition(cur):
             return False
         entity.properties[key] = new_value
-        self.corruption.increase(0.1)
+        self.corruption.increase(0.05)
         return True
 
     def smart_patch(self, entity):
         p = entity.properties
         label = entity.debug_label()
 
+        # Dano direto em BOSS via Smart Patch (Logic Burst)
+        if p.get("tipo") == "BOSS":
+            damage = entity.take_damage(50)
+            self.corruption.increase(0.08)
+            return f"LOGIC_BURST: -{damage} HP"
+
+        # BufferOverflow fix
+        if label == "BufferOverflow":
+            load = p.get("load", 0)
+            size = p.get("buffer_size", 1)
+            if load > size:
+                p["buffer_size"] = load + 20
+                self.corruption.increase(0.03)
+                return f"ALLOC: buffer_size = {p['buffer_size']}"
+
+        # MemoryLeak fix
+        if label == "MemoryLeak":
+            rate = p.get("leak_rate", 0)
+            if rate > 0:
+                p["leak_rate"] = 0
+                self.corruption.increase(0.02)
+                return "PATCH: leak_rate = 0 (Memory fixed)"
+
         # Caso 1: NullPointer sem referência
         if label == "NullPointer" and p.get("reference") is None:
-            # Simulando: if (ref == null) ref = @heap_alloc()
             p["reference"] = "@heap::fixed_addr"
             if "visible" in p:
                 p["visible"] = True
-            self.corruption.increase(0.08)
+            self.corruption.increase(0.04)
             return "IF (ref == NULL) -> ref = @heap::fixed"
 
         # Caso 2: Velocidade nula ou negativa (travamento)
         if "speed" in p and (p["speed"] is None or (isinstance(p["speed"], (int, float)) and p["speed"] <= 0)):
-            # Simulando: if (speed <= 0) speed = DEFAULT_SPEED
             p["speed"] = 5
-            self.corruption.increase(0.05)
+            self.corruption.increase(0.02)
             return "IF (speed <= 0) -> speed = 5"
 
         # Caso 3: StackOverflow com profundidade excessiva
         if label == "StackOverflow" and "stack_depth" in p:
             try:
                 cur = int(p.get("stack_depth", 1))
-            except (TypeError, ValueError):
+            except:
                 cur = 1
             if cur > 1:
-                # Simulando: while (depth > 1) depth--
                 p["stack_depth"] = max(1, cur - 1)
-                self.corruption.increase(0.06)
+                self.corruption.increase(0.03)
                 return "WHILE (stack > 1) -> stack--"
 
         # Caso 4: InfiniteLoop com velocidade muito alta (instável)
         if label == "InfiniteLoop" and "speed" in p:
             try:
                 sp = float(p.get("speed", 0))
-            except (TypeError, ValueError):
+            except:
                 sp = 0
             if sp > 10:
                 p["speed"] = 2.5
-                self.corruption.increase(0.04)
+                self.corruption.increase(0.02)
                 return "IF (speed > 10) -> speed = 2.5 (throttle)"
 
         return None
@@ -141,14 +172,67 @@ class DebuggerGun:
     def manual_patch(self, entity, command_str: str) -> str:
         """
         Tenta parsear comandos de código.
-        Formatos suportados:
-        - prop = valor
-        - prop += valor
-        - prop -= valor
-        - if prop == valor: prop2 = valor2
         """
-        command_str = command_str.strip()
-        self.corruption.increase(0.1)
+        command_str = command_str.strip().lower()
+        self.corruption.increase(0.05)
+
+        # Comandos Especiais (Shortcuts)
+        if command_str == "dump":
+            items = [f"{k}={v}" for k, v in entity.properties.items()]
+            return "DUMP: " + " | ".join(items)
+        
+        if command_str == "freeze":
+            if "speed" in entity.properties:
+                entity.properties["speed"] = 0
+                return "OK: speed = 0 (Congelado)"
+            return "Erro: Alvo não possui propriedade 'speed'"
+
+        if command_str == "unfreeze":
+            if "speed" in entity.properties:
+                entity.properties["speed"] = 5
+                return "OK: speed = 5 (Descongelado)"
+            return "Erro: Alvo não possui propriedade 'speed'"
+
+        if command_str == "kill":
+            if entity.properties.get("tipo") == "BOSS":
+                damage = entity.take_damage(100)
+                return f"CRITICAL: Processo mestre resistiu. Dano: -{damage}"
+            entity.properties["visible"] = False
+            entity.properties["hostile"] = False
+            entity.properties["state"] = "terminated"
+            return "OK: Processo terminado."
+
+        if command_str == "heal":
+            if "health" in entity.properties:
+                entity.properties["health"] = 100
+                return "OK: Integridade restaurada (100%)"
+            return "Erro: Alvo não possui propriedade 'health'"
+
+        if command_str == "invert":
+            if "color" in entity.properties:
+                c = entity.properties["color"]
+                entity.properties["color"] = (255 - c[0], 255 - c[1], 255 - c[2])
+                return f"OK: Cores invertidas para {entity.properties['color']}"
+            return "Erro: Alvo não possui propriedade 'color'"
+
+        if command_str.startswith("teleport "):
+            try:
+                coords = command_str[9:].replace(",", " ").split()
+                if len(coords) == 2:
+                    entity.properties["x"] = float(coords[0])
+                    entity.properties["y"] = float(coords[1])
+                    return f"OK: Teleportado para {coords[0]}, {coords[1]}"
+            except: pass
+            return "Erro: Use 'teleport x y'"
+
+        if command_str.startswith("scale "):
+            try:
+                factor = float(command_str[6:])
+                entity.properties["w"] = int(entity.properties.get("w", 40) * factor)
+                entity.properties["h"] = int(entity.properties.get("h", 40) * factor)
+                return f"OK: Escalonado por {factor}"
+            except: pass
+            return "Erro: Use 'scale fator'"
 
         try:
             # Caso IF: if prop == val: prop2 = val2
@@ -160,7 +244,6 @@ class DebuggerGun:
                 cond_part = parts[0].strip()
                 action_part = parts[1].strip()
 
-                # Simplificação: apenas == suportado por enquanto
                 if "==" not in cond_part:
                     return "Erro: Apenas '==' suportado no IF."
                 
@@ -168,7 +251,6 @@ class DebuggerGun:
                 if c_key not in entity.properties:
                     return f"Erro: {c_key} não existe."
                 
-                # Checa condição
                 current_val = entity.properties[c_key]
                 target_val = self._parse_val(c_val)
 
@@ -225,7 +307,6 @@ class DebuggerGun:
         if val_str.lower() == "false": return False
         if val_str.lower() == "none" or val_str.lower() == "null": return None
         
-        # Remove aspas se houver
         if (val_str.startswith("'") and val_str.endswith("'")) or \
            (val_str.startswith('"') and val_str.endswith('"')):
             return val_str[1:-1]

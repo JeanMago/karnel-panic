@@ -1,4 +1,5 @@
 import pygame
+import math
 from ecs.entity import Entity
 
 
@@ -58,13 +59,24 @@ class InfiniteLoop(Entity):
         self.properties["y"] = self._base_y + oy
 
     def render(self, screen):
-        pygame.draw.rect(
-            screen,
-            self.properties["color"],
-            (
-                self.properties["x"],
-                self.properties["y"],
-                self.properties["w"],
-                self.properties["h"],
-            ),
-        )
+        x, y = self.properties["x"], self.properties["y"]
+        w, h = self.properties["w"], self.properties["h"]
+        color = self.properties["color"]
+        cx, cy = x + w // 2, y + h // 2
+        
+        angle = pygame.time.get_ticks() * 0.005
+        points = []
+        for i in range(8):
+            a = angle + (i * math.pi / 4)
+            r = (w // 2) if i % 2 == 0 else (w // 2.5)
+            px = cx + math.cos(a) * r
+            py = cy + math.sin(a) * r
+            points.append((px, py))
+            
+        # Engrenagem externa
+        pygame.draw.polygon(screen, color, points)
+        pygame.draw.polygon(screen, (255, 255, 255), points, 1)
+        
+        # Buraco central (vazio/preto)
+        pygame.draw.circle(screen, (10, 10, 15), (int(cx), int(cy)), int(w // 5))
+        pygame.draw.circle(screen, (255, 255, 255), (int(cx), int(cy)), int(w // 5), 1)
