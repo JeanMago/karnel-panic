@@ -33,7 +33,7 @@ class StackOverflow(Entity):
             "hostile": True,
         }
 
-    def update(self):
+    def update(self, dt):
         sp = self.properties.get("speed")
         if sp is None:
             return
@@ -64,13 +64,13 @@ class StackOverflow(Entity):
             off = 8 + len(self.ghosts) * 6
             self.ghosts.append({"ox": off, "oy": -off // 2, "a": 110})
 
-        self._phase += 0.03 * sp
+        self._phase += 0.03 * sp * dt
         amp = 140
         self.properties["x"] = self._anchor_x + math.sin(self._phase) * amp
         self.properties["y"] = self._anchor_y
 
         for g in self.ghosts:
-            g["ox"] = g.get("ox", 0) + math.sin(self._phase + 0.4) * 0.8
+            g["ox"] = g.get("ox", 0) + math.sin(self._phase + 0.4) * 0.8 * dt
 
     def render(self, screen):
         base = (

@@ -42,7 +42,7 @@ class Exit(Entity):
             "hostile": False,
         }
 
-    def update(self):
+    def update(self, dt):
         if self.properties.get("active"):
             self.properties["color"] = (0, 255, 200)
         else:

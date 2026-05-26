@@ -10,7 +10,7 @@ class Entity:
     def is_hostile(self) -> bool:
         return bool(self.properties.get("hostile"))
 
-    def update(self):
+    def update(self, dt):
         pass
 
     def render(self, screen):

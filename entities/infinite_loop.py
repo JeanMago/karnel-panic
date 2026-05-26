@@ -41,12 +41,12 @@ class InfiniteLoop(Entity):
         t -= w
         return 0.0, h - t
 
-    def update(self):
+    def update(self, dt):
         sp = self.properties.get("speed")
         if sp is None:
             return
         try:
-            sp = float(sp)
+            sp = float(sp) * dt
         except (TypeError, ValueError):
             return
         if sp <= 0:

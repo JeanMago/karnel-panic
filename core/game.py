@@ -1,7 +1,7 @@
 import pygame
 import random
 
-from config import WIDTH, HEIGHT, FPS
+from config import WIDTH, HEIGHT, FPS, LIMIT_FPS
 from core.loop import GameLoop
 from core.corruption import CorruptionSystem
 from core.levels import build_level, get_level_info
@@ -14,13 +14,20 @@ from ui.hud import HUD
 from ui.code_editor import CodeEditor
 from ui import menus
 
-from persistence.storage import load_state, save_state
+from persistence.storage import load_state, save_state, load_settings
 
 
 class Game:
     def __init__(self):
         pygame.init()
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+        settings = load_settings()
+        self.width = settings.get("width", WIDTH)
+        self.height = settings.get("height", HEIGHT)
+        self.limit_fps = settings.get("limit_fps", LIMIT_FPS)
+
+        self.screen = pygame.display.set_mode(
+            (self.width, self.height), pygame.RESIZABLE | pygame.SCALED
+        )
         pygame.display.set_caption("Kernel.panic()")
 
         self.clock = pygame.time.Clock()
@@ -322,6 +329,9 @@ class Game:
                         pygame.quit()
                         return
                     continue
+                if action == "settings":
+                    menus.show_settings(self)
+                    continue
 
                 level = menus.show_level_selection(self)
                 if level is False:
@@ -337,7 +347,14 @@ class Game:
             self.audio.play_music("level")
 
             while running:
-                self.clock.tick(FPS)
+                if self.limit_fps:
+                    dt_ms = self.clock.tick(FPS)
+                else:
+                    dt_ms = self.clock.tick()
+                
+                # Delta time: 1.0 em 60 FPS
+                dt = dt_ms * 60 / 1000.0
+
                 self.corruption.update_frame_glitch()
                 self.audio.update_volume(self.corruption.level)
 
@@ -345,14 +362,12 @@ class Game:
                     if event.type == pygame.QUIT:
                         pygame.quit()
                         return
-                    if event.type == pygame.VIDEORESIZE:
-                        self.screen = pygame.display.set_mode(
-                            (event.w, event.h), pygame.RESIZABLE
-                        )
                     if event.type == pygame.MOUSEBUTTONDOWN:
                         self.select_entity(event.pos)
                     if event.type == pygame.KEYDOWN:
-                        if event.key == pygame.K_ESCAPE:
+                        if event.key == pygame.K_F11:
+                            pygame.display.toggle_fullscreen()
+                        elif event.key == pygame.K_ESCAPE:
                             pause_action = menus.show_pause_menu(self)
                             if pause_action == "quit":
                                 pygame.quit()
@@ -370,7 +385,7 @@ class Game:
                     break
 
                 if not self.code_editor.active:
-                    self.loop.update()
+                    self.loop.update(dt)
                     self._apply_corruption_to_entities()
                     self._check_objectives()
                     self._clamp_entities()

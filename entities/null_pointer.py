@@ -27,7 +27,7 @@ class NullPointer(Entity):
     def _is_resolved(self) -> bool:
         return self.properties.get("reference") is not None
 
-    def update(self):
+    def update(self, dt):
         if not self._is_resolved():
             self.properties["visible"] = False
             self.properties["state"] = "dangling"
@@ -40,7 +40,7 @@ class NullPointer(Entity):
         if speed is None:
             speed = 0
         try:
-            speed = float(speed)
+            speed = float(speed) * dt
         except (TypeError, ValueError):
             speed = 0
 

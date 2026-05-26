@@ -21,13 +21,13 @@ class Player(Entity):
             "hostile": False,
         }
 
-    def update(self):
+    def update(self, dt):
         keys = pygame.key.get_pressed()
         spd = self.properties.get("speed")
         if spd is None:
             return
         try:
-            spd = float(spd)
+            spd = float(spd) * dt
         except (TypeError, ValueError):
             return
 
