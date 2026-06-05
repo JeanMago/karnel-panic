@@ -319,7 +319,7 @@ def show_tutorial(game):
         sw, sh = screen.get_width(), screen.get_height()
         screen.fill((10, 10, 15))
 
-        titles = ["Controles e Ferramentas", "Terminal de Código", "Guia de Erros"]
+        titles = ["Controles e Ferramentas", "Terminal de Código", "Guia de Erros", "Combate contra Chefes"]
         title_surf = font_title.render(titles[current_page], True, (0, 255, 255))
         screen.blit(title_surf, (sw // 2 - title_surf.get_width() // 2, 40))
 
