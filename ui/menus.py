@@ -339,7 +339,7 @@ def show_tutorial(game):
             "DICA: Cada setor possui um Processo Mestre (BOSS).",
             "A Saída só é habilitada após a neutralização do Boss local."
         ],
-        # Página 7: Progresso e Integridade
+        # Página 7: Objetivos e Integridade
         [
             "--- OBJETIVOS E INTEGRIDADE DO SISTEMA ---",
             "",
@@ -352,6 +352,46 @@ def show_tutorial(game):
             "2. Corrupção de Dados em 100%.",
             "",
             "MANTENHA O SISTEMA LIMPO, SENTINELA. BOA SORTE."
+        ],
+        # Página 8: Vulnerabilidades de Bosses
+        [
+            "--- GUIA DE VULNERABILIDADES (BOSSES) ---",
+            "",
+            "Processos Mestres são complexos. Use lógica específica:",
+            "",
+            "1. NULL_MASTER (Fase 1, 4):",
+            "   Vulnerável a 'Data Injection' [V]. Cole valores altos",
+            "   para causar sobrecarga de memória.",
+            "",
+            "2. RECURSIVE_OVERLORD (Fase 2, 5):",
+            "   Vulnerável a 'Variable Sabotage'. Use o Terminal [C]",
+            "   para diminuir seu 'load' para abaixo de 50.",
+            "",
+            "3. CORE_KERNEL_PANIC (Fase 3, 6, 7):",
+            "   Vulnerável a 'Smart Patch' [P]. Use repetidamente",
+            "   para causar curtos-circuitos lógicos (Logic Burst).",
+            "",
+            "DICA: O comando 'scan' revela o HP real de qualquer Boss."
+        ],
+        # Página 9: Eliminação Avançada (Zero Corrupção)
+        [
+            "--- MÉTODOS DE ELIMINAÇÃO LIMPA ---",
+            "",
+            "Vencer sem aumentar a corrupção é a marca de um Sentinela Elite.",
+            "",
+            "1. COMANDO 'PURGE' (Terminal):",
+            "   Remove o inimigo e ESTABILIZA o sistema (-5% corrupção).",
+            "   É o método mais eficiente para limpar o Kernel.",
+            "",
+            "2. COMANDO 'SILENCE' (Terminal):",
+            "   Neutraliza a hostilidade sem deletar o processo.",
+            "   Útil para passar por áreas densas sem gerar calor.",
+            "",
+            "3. SMART PATCH [P] (Debugger Gun):",
+            "   Corrige a lógica interna do erro. O inimigo para de",
+            "   atacar e a corrupção não sobe.",
+            "",
+            "DICA: Evite 'kill' e 'teleport' para manter o sistema puro."
         ]
     ]
     
@@ -368,7 +408,9 @@ def show_tutorial(game):
             "4. Guia de Erros", 
             "5. Combate Boss",
             "6. Setores",
-            "7. Objetivos"
+            "7. Objetivos",
+            "8. Fraquezas Boss",
+            "9. Táticas Elite"
         ]
         title_surf = font_title.render(titles[current_page], True, (0, 255, 255))
         screen.blit(title_surf, (sw // 2 - title_surf.get_width() // 2, 40))
