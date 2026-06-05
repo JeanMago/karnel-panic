@@ -18,11 +18,12 @@ class NullPointer(Entity):
             "y": y,
             "w": 40,
             "h": 40,
-            "speed": 22,
+            "speed": 3.5,
             "reference": None,
             "visible": False,
             "color": (255, 80, 80),
-            "hostile": True,
+            "collision": False, # Começa sem colisão física
+            "hostile": False,   # Começa inofensivo
         }
 
     def _is_resolved(self) -> bool:
@@ -32,14 +33,17 @@ class NullPointer(Entity):
         if not self._is_resolved():
             self.properties["visible"] = False
             self.properties["state"] = "dangling"
+            self.properties["collision"] = False
+            self.properties["hostile"] = False
             return
 
         self.properties["visible"] = True
         self.properties["state"] = "chasing"
+        self.properties["collision"] = True
+        self.properties["hostile"] = True
 
         speed = self.properties.get("speed")
-        if speed is None:
-            speed = 0
+        if speed is None: speed = 0
         try:
             speed = float(speed) * dt
         except (TypeError, ValueError):
@@ -48,15 +52,15 @@ class NullPointer(Entity):
         if self.target and speed > 0:
             tx = self.target.properties.get("x", self.properties["x"])
             ty = self.target.properties.get("y", self.properties["y"])
-
-            if self.properties["x"] < tx:
-                self.properties["x"] += speed
-            if self.properties["x"] > tx:
-                self.properties["x"] -= speed
-            if self.properties["y"] < ty:
-                self.properties["y"] += speed
-            if self.properties["y"] > ty:
-                self.properties["y"] -= speed
+            
+            dx = tx - self.properties["x"]
+            dy = ty - self.properties["y"]
+            dist = math.sqrt(dx**2 + dy**2)
+            
+            if dist > 2: # Evita jitter ao chegar muito perto
+                # Normaliza o movimento para evitar velocidade diagonal extra
+                self.properties["x"] += (dx / dist) * speed
+                self.properties["y"] += (dy / dist) * speed
 
     def render(self, screen):
         import random

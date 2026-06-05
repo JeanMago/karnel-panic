@@ -231,85 +231,127 @@ def show_tutorial(game):
     pages = [
         # Página 1: O Básico
         [
-            "--- GUIA RÁPIDO: MOVIMENTAÇÃO E RECORTE ---",
+            "--- CONTROLES: MOVIMENTAÇÃO E SELEÇÃO ---",
             "",
-            "OBJETIVO: Você é um Sentinela que deve consertar o sistema.",
-            "Conserte os erros para abrir a Saída (Terminal de Saída).",
+            "Você é um 'Sentinel.exe' encarregado de limpar o Kernel.",
+            "O mundo é um labirinto de endereços de memória GIGANTE.",
             "",
-            "CONTROLES DE MOVIMENTO:",
-            "  [ W,A,S,D ] Mover o Sentinela pelo sistema.",
-            "  [ MOUSE ] Clique em qualquer objeto para selecioná-lo.",
+            "MOVIMENTO E VISÃO:",
+            "  [ W,A,S,D ] Mover pelo sistema.",
+            "  [ MOUSE ] Clique em qualquer entidade para focar nela.",
+            "  [ CÂMERA ] Ela segue você automaticamente pelo mapa.",
             "",
             "FERRAMENTA DE RECORTE (Debugger Gun):",
-            "  Sua arma principal não atira balas, ela altera propriedades.",
-            "  [ X ] RECORTE: Rouba uma propriedade do alvo (ex: velocidade).",
-            "  [ V ] COLAR: Aplica o valor roubado em um novo alvo.",
-            "  [ TAB ] Muda o 'clipe' (você tem dois espaços: A e B).",
-            "  [ P ] REPARO RÁPIDO: O sistema tenta sugerir uma correção.",
+            "  [ X ] RECORTE: Copia o valor de uma variável (ex: speed).",
+            "  [ V ] COLAR: Aplica o valor no alvo (ex: zerar speed do inimigo).",
+            "  [ TAB ] Troca entre Slot A e B (você pode guardar 2 valores).",
+            "  [ P ] SMART PATCH: Tenta uma correção automática rápida.",
             "",
-            "DICA: Você pode roubar sua própria velocidade ou de inimigos!"
+            "DICA: Você pode recortar propriedades DE VOCÊ MESMO para usar!"
         ],
         # Página 2: Terminal de Código [C]
         [
             "--- TERMINAL DE CÓDIGO [ TECLA C ] ---",
             "",
-            "Digite comandos para manipular o alvo selecionado:",
+            "Se o Recorte/Cola for limitado, use o Terminal para controle total.",
+            "Primeiro SELECIONE um alvo com o mouse, depois pressione [C].",
             "",
-            "ATALHOS ÚTEIS (Shortcuts):",
-            "  freeze / unfreeze   (Congela ou solta o alvo)",
-            "  kill                (Termina o processo imediatamente)",
-            "  heal                (Restaura a vida do alvo para 100%)",
-            "  invert              (Inverte as cores visuais do alvo)",
-            "  teleport x y        (Ex: teleport 500 300)",
-            "  scale fator         (Ex: scale 2.0 para dobrar o tamanho)",
+            "COMANDOS DE EMERGÊNCIA:",
+            "  purge               (Purgar: Deleta SEM aumentar corrupção)",
+            "  kill                (Deleta o processo - gera resíduos/corrupção)",
+            "  freeze / unfreeze   (Congela ou solta o alvo completamente)",
+            "  heal                (Restaura a integridade (health) em 100%)",
+            "  scan                (Exibe status detalhado do alvo selecionado)",
             "",
-            "COMANDOS DE ATRIBUIÇÃO:",
-            "  speed = 10          |  speed += 2  |  load -= 50",
-            "  buffer_size = 500   |  visible = false",
+            "UTILITÁRIOS AVANÇADOS:",
+            "  optimize            (Aumenta velocidade do alvo em 50%)",
+            "  silence             (Desativa a lógica hostil do alvo)",
+            "  teleport x y        (Move o objeto para coordenadas exatas)",
             "",
-            "COMANDO DE INSPEÇÃO:",
-            "  dump                (Revela todas as propriedades)",
+            "DICA: O comando 'purge' é a forma mais limpa de limpar o sistema."
         ],
-        # Página 3: Guia de Erros (Inimigos)
+        # Página 3: Execução Limpa vs Corrupção
         [
-            "--- CONHECENDO OS ERROS DO SISTEMA ---",
+            "--- ESTRATÉGIA: EXECUÇÃO LIMPA ---",
             "",
-            "1. NullPointer (Quadrado Vermelho Fantasma)",
-            "   Eles são instáveis. Só param quando recebem uma 'referência'.",
-            "   COMO PARAR: Use o Smart Patch [P] ou cole um Token nele.",
+            "Cada ação no Kernel deixa rastros. Entenda a diferença:",
             "",
-            "2. Buffer Overflow (Barra de Carga Laranja/Vermelha)",
-            "   Ele explode em fúria se a carga (Load) for maior que o espaço.",
-            "   COMO PARAR: Aumente o 'buffer_size' ou diminua o 'load'.",
+            "1. MÉTODO BRUTO (Padrão):",
+            "   Usar 'kill' ou levar dano gera CORRUPÇÃO (Glitches).",
+            "   Se a corrupção atingir 100%, o sistema entra em Pânico.",
             "",
-            "3. Memory Leak (Rastro Verde)",
-            "   Ele vai sujando o sistema por onde passa.",
-            "   COMO PARAR: Use o terminal [C] e digite: leak_rate = 0",
+            "2. EXECUÇÃO LIMPA (Recomendado):",
+            "   Use o comando 'purge' no terminal para remover erros.",
+            "   Use o 'Smart Patch [P]' para corrigir lógica sem deletar.",
+            "   Estas ações estabilizam o sistema e não geram calor.",
             "",
-            "4. Erros de Loop e Pilha (InfiniteLoop / StackOverflow)",
-            "   Se movem em círculos ou se multiplicam sem parar.",
-            "   COMO PARAR: Zere a 'speed' ou diminua o 'stack_depth'."
+            "DICA: Purgar um inimigo perigoso economiza HP e Integridade.",
+            "Você pode vencer o jogo com 0% de corrupção se for preciso!"
         ],
-        # Página 4: Combate contra Chefes
+        # Página 4: Guia de Erros (Inimigos)
         [
-            "--- COMBATE CONTRA PROCESSOS MESTRES (BOSSES) ---",
+            "--- ANATOMIA DOS ERROS (INIMIGOS) ---",
             "",
-            "Bosses são protegidos contra o comando 'kill' direto.",
-            "Para derrotá-los, use sua criatividade lógica:",
+            "1. NullPointer (Vermelho Instável):",
+            "   Invisível até receber uma REFERÊNCIA. Recorte um 'token' do",
+            "   Player e cole nele para revelá-lo.",
+            "",
+            "2. Buffer Overflow (Laranja):",
+            "   Ataca se 'load' > 'buffer_size'. SOLUÇÃO: Aumente o buffer.",
+            "",
+            "3. Memory Leak (Verde):",
+            "   Deixa rastro de blocos. SOLUÇÃO: Sete 'leak_rate = 0'.",
+            "",
+            "4. Deadlock (Cinza/Amarelo):",
+            "   Trava o sistema se chegar perto, DRENANDO sua velocidade.",
+            "   SOLUÇÃO: Use 'purge' no Terminal ou se afaste rápido.",
+            "",
+            "5. Loop/Stack (Amarelo/Roxo): Se multiplicam ou giram."
+        ],
+        # Página 5: Combate contra Bosses
+        [
+            "--- COMBATE AVANÇADO (BOSSES) ---",
+            "",
+            "Chefes de Kernel ignoram o comando 'kill' e 'purge' diretos.",
             "",
             "1. LOGIC BURST [ TECLA P ]:",
-            "   O Smart Patch em um Boss causa um surto de lógica",
-            "   que remove uma grande fatia de vida (-50 HP).",
+            "   Causa um curto-circuito lógico: -50 HP instantaneamente.",
             "",
-            "2. INJEÇÃO DE DADOS [ TECLA V ]:",
-            "   Se você tiver um NÚMERO no clipe (ex: speed de 100),",
-            "   COLE no Boss para causar dano por injeção.",
+            "2. DATA INJECTION [ TECLA V ]:",
+            "   Cole valores numéricos (ex: speed de 100) neles.",
+            "   Discrepâncias de dados causam dano de integridade.",
             "",
-            "3. ATAQUE PELO TERMINAL [ TECLA C ]:",
-            "   Você pode diminuir a 'health' diretamente no terminal,",
-            "   ou atacar fraquezas específicas (ex: zerar a 'speed').",
+            "3. SABOTAGEM DE VARIÁVEL [ TECLA C ]:",
+            "   Sabote 'speed' ou 'fire_rate' no Terminal para facilitar.",
             "",
-            "DICA: Fique atento ao 'Flash' branco, ele indica dano!"
+            "DICA: Bosses são processos vitais, você deve esgotar o HP deles."
+        ],
+        # Página 6: Setores do Kernel (Fases)
+        [
+            "--- EXPLORANDO OS SETORES DO KERNEL ---",
+            "",
+            "Setor 1-3: O Núcleo Básico (Heap, Stack, Kernel Core).",
+            "Setor 4: Deadlock Forest (Navegação restrita e travas).",
+            "Setor 5: Registry Hive (Labirinto denso de configurações).",
+            "Setor 6: Firewall Gate (Defesas de rede massivas).",
+            "Setor 7: Cloud Sync (O confronto final na nuvem).",
+            "",
+            "DICA: Cada setor possui um Processo Mestre (BOSS).",
+            "A Saída só é habilitada após a neutralização do Boss local."
+        ],
+        # Página 7: Progresso e Integridade
+        [
+            "--- OBJETIVOS E INTEGRIDADE DO SISTEMA ---",
+            "",
+            "SISTEMA DE DANOS:",
+            "- Colisão com erros: -10 HP | +3% Corrupção.",
+            "- Colisão com Bosses: -25 HP | +10% Corrupção.",
+            "",
+            "CONDIÇÕES DE FALHA (KERNEL PANIC):",
+            "1. Perda de Integridade Física (0 HP).",
+            "2. Corrupção de Dados em 100%.",
+            "",
+            "MANTENHA O SISTEMA LIMPO, SENTINELA. BOA SORTE."
         ]
     ]
     
@@ -319,18 +361,26 @@ def show_tutorial(game):
         sw, sh = screen.get_width(), screen.get_height()
         screen.fill((10, 10, 15))
 
-        titles = ["Controles e Ferramentas", "Terminal de Código", "Guia de Erros", "Combate contra Chefes"]
+        titles = [
+            "1. Controles", 
+            "2. Terminal", 
+            "3. Execução Limpa",
+            "4. Guia de Erros", 
+            "5. Combate Boss",
+            "6. Setores",
+            "7. Objetivos"
+        ]
         title_surf = font_title.render(titles[current_page], True, (0, 255, 255))
         screen.blit(title_surf, (sw // 2 - title_surf.get_width() // 2, 40))
 
         # Desenhar conteúdo da página
         for i, line in enumerate(pages[current_page]):
             color = (200, 200, 200)
-            if line.startswith("  [") or line.startswith("  MOUSE") or "COMO PARAR:" in line:
+            if line.startswith("  [") or line.startswith("  MOUSE") or "SOLUÇÃO:" in line or "COMO VENCER:" in line:
                 color = (0, 255, 0)
             if "---" in line or (line and line[0].isdigit()):
                 color = (255, 255, 0)
-            if "speed =" in line or "dump" in line or "load -=" in line or "freeze" in line or "kill" in line or "teleport" in line or "LOGIC BURST" in line or "INJEÇÃO" in line:
+            if "=" in line or "kill" in line or "freeze" in line or "teleport" in line or "LOGIC BURST" in line or "PATCH" in line:
                 color = (0, 200, 255) # Cor de código/comando
                 
             text_surf = font_text.render(line, True, color)
@@ -373,8 +423,12 @@ def show_level_selection(game):
 
     levels = [
         "Fase 1: The Heap",
-        "Fase 2: Stack / Loop",
+        "Fase 2: Stack Overflow",
         "Fase 3: Kernel Panic",
+        "Fase 4: Deadlock Forest",
+        "Fase 5: Registry Hive",
+        "Fase 6: Firewall Gate",
+        "Fase 7: Cloud Sync",
     ]
     selected_idx = 0
 

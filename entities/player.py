@@ -21,10 +21,26 @@ class Player(Entity):
             "speed": PLAYER_SPEED,
             "token": "@PID:0xCAFE",
             "color": (0, 255, 0),
+            "collision": True,
             "hostile": False,
+            "invuln_timer": 0,
+            "last_hit_timer": 0
         }
 
+    def take_damage(self, amount):
+        if self.properties["invuln_timer"] <= 0:
+            self.properties["health"] -= amount
+            self.properties["invuln_timer"] = 60 # ~1 segundo de i-frames
+            self.properties["last_hit_timer"] = 15
+            return True
+        return False
+
     def update(self, dt):
+        if self.properties["invuln_timer"] > 0:
+            self.properties["invuln_timer"] -= 1 * dt
+        if self.properties["last_hit_timer"] > 0:
+            self.properties["last_hit_timer"] -= 1 * dt
+
         keys = pygame.key.get_pressed()
         spd = self.properties.get("speed")
         if spd is None:
@@ -49,7 +65,14 @@ class Player(Entity):
     def render(self, screen):
         x, y = self.properties["x"], self.properties["y"]
         w, h = self.properties["w"], self.properties["h"]
+        
+        # Feedback visual de dano / invulnerabilidade
+        if self.properties["invuln_timer"] > 0 and (pygame.time.get_ticks() // 100) % 2 == 0:
+            return # Efeito de piscar (flicker)
+
         color = self.properties["color"]
+        if self.properties["last_hit_timer"] > 0:
+            color = (255, 50, 50) # Flash vermelho ao ser atingido
         
         # Desenha o corpo em forma de diamante (Sentinela)
         points = [

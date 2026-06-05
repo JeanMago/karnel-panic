@@ -30,6 +30,7 @@ class StackOverflow(Entity):
             "speed": 1.2,
             "stack_depth": 1,
             "color": (180, 80, 255),
+            "collision": True,
             "hostile": True,
         }
 

@@ -105,18 +105,40 @@ class Game:
     def _corruption_from_hostiles(self):
         px, py = self.player.properties["x"], self.player.properties["y"]
         pw, ph = self.player.properties.get("w", 40), self.player.properties.get("h", 40)
+        
+        # HITBOX DE DANO: Ligeiramente MAIOR que o corpo físico (2px de folga)
+        # Isso garante que ao encostar fisicamente, o dano seja disparado.
+        padding = 2
+        p_damage_rect = pygame.Rect(px - padding, py - padding, pw + padding * 2, ph + padding * 2)
 
         for entity in self.loop.entities:
             if entity is self.player or not entity.is_hostile():
                 continue
             if not entity.properties.get("visible", True):
                 continue
+            
             ex = entity.properties.get("x", 0)
             ey = entity.properties.get("y", 0)
             ew = entity.properties.get("w", 40)
             eh = entity.properties.get("h", 40)
-            if px < ex + ew and px + pw > ex and py < ey + eh and py + ph > ey:
-                self.corruption.increase(0.0005)
+            
+            e_rect = pygame.Rect(ex, ey, ew, eh)
+
+            if p_damage_rect.colliderect(e_rect):
+                # 1. Aumento GRADUAL (por frame de contato)
+                self.corruption.increase(0.001) 
+                
+                # 2. Dano de IMPACTO (Saúde + Salto de Corrupção)
+                dmg = 10
+                corruption_bump = 0.03
+                
+                if entity.properties.get("tipo") == "BOSS":
+                    dmg = 25
+                    corruption_bump = 0.10
+                
+                if self.player.take_damage(dmg):
+                    self.corruption.increase(corruption_bump)
+                    self.console.log(f"DANO: -{dmg} HP | +{corruption_bump*100:.0f}% Corrupção")
 
     def select_entity(self, pos):
         # A posição do mouse (pos) está em Screen Space. 
@@ -203,7 +225,7 @@ class Game:
                     self.console.log("CUT token falhou")
             else:
                 self.console.log("CUT token: só funciona no Player")
-            self.laser_frames = 10
+            self.laser_frames = 4
             self.laser_color = (255, 180, 80)
             return
 
@@ -215,7 +237,7 @@ class Game:
                 ok = True
             if not ok:
                 self.console.log("CUT: sem propriedade válida neste alvo")
-            self.laser_frames = 10
+            self.laser_frames = 4
             self.laser_color = (255, 50, 50)
 
         if event.key == pygame.K_v:
@@ -224,7 +246,7 @@ class Game:
                 self.console.log(f"PASTE → {dest}")
             else:
                 self.console.log("PASTE: buffer vazio ou destino inválido")
-            self.laser_frames = 10
+            self.laser_frames = 4
             self.laser_color = (50, 50, 255)
 
         if event.key == pygame.K_p:
@@ -233,7 +255,7 @@ class Game:
                 self.console.log(f"PATCH aplicado em: {what}")
             else:
                 self.console.log("PATCH: nada a corrigir")
-            self.laser_frames = 10
+            self.laser_frames = 4
             self.laser_color = (50, 255, 50)
 
     def render(self):
@@ -304,10 +326,8 @@ class Game:
         self.console.draw(self.screen)
         self.code_editor.draw(self.screen)
 
-        if self.corruption.level > 0.8 and self.corruption.glitch_active:
-            inv = pygame.Surface((sw, sh))
-            inv.fill((255, 255, 255))
-            self.screen.blit(inv, (0, 0), special_flags=pygame.BLEND_RGB_SUB)
+        # Novos efeitos de corrupção dinâmicos
+        self.corruption.draw_screen_glitches(self.screen)
 
         pygame.display.flip()
 
@@ -331,19 +351,23 @@ class Game:
             ew, eh = exit_node.properties["w"], exit_node.properties["h"]
             
             if boss_defeated and px < ex + ew and px + pw > ex and py < ey + eh and py + ph > ey:
-                self.console.log("BOSS DERROTADO. SISTEMA RESTAURADO.")
+                self.console.log("BOSS NEUTRALIZADO. SEGURANÇA DO SETOR RESTAURADA.")
                 pygame.time.delay(1000)
                 
                 recovery = 0.15 * (1.0 - self.corruption.level)
                 self.corruption.level = max(0.0, self.corruption.level - recovery)
-                self.console.log(f"REPARAÇÃO: -{recovery*100:.1f}% de corrupção.")
+                self.console.log(f"REPARAÇÃO AUTOMÁTICA: -{recovery*100:.1f}% de corrupção.")
 
                 next_level = self.level_id + 1
                 curr_max = int(self.saved.get("max_level", 1))
                 new_max = max(curr_max, next_level)
                 
-                if next_level > 3:
+                if self.level_id == 7:
+                    self.console.log("!!! KERNEL TOTALMENTE REESTRUTURADO !!!")
+                    pygame.time.delay(2000)
+                    # Aqui poderíamos chamar um final cinematográfico
                     next_level = 1
+                
                 curr_corruption = self.corruption.level
                 save_state(curr_corruption, next_level, new_max)
                 self.reset_system(next_level, carry_corruption=curr_corruption)
@@ -371,7 +395,8 @@ class Game:
                     self.level_id = 1
                     self.reset_system(self.level_id, carry_corruption=0.0)
                     save_state(0.0, 1, 1)
-                    show_opening_crawl(self)
+                    if show_opening_crawl(self) is False:
+                        continue # Volta ao menu se cancelar a confirmação
                     in_menu = False
                     continue
                 
@@ -429,14 +454,26 @@ class Game:
                     break
 
                 if not self.code_editor.active:
+                    # Salva posição anterior de todos para colisão
+                    for e in self.loop.entities:
+                        if "x" in e.properties and "y" in e.properties:
+                            e.properties["last_x"] = e.properties["x"]
+                            e.properties["last_y"] = e.properties["y"]
+
                     self.loop.update(dt)
                     self._apply_corruption_to_entities()
                     self._check_objectives()
                     
-                    # Colisão e movimento
-                    if self._check_collision_with_obstacles(self.player):
-                        self.player.properties["x"] = self.player.properties["last_x"]
-                        self.player.properties["y"] = self.player.properties["last_y"]
+                    # Colisão e movimento para todas as entidades móveis
+                    for e in self.loop.entities:
+                        if e.properties.get("tipo") == "Boundary" or not e.properties.get("visible", True):
+                            continue
+                        
+                        # Se for algo que se move (Player ou Inimigos), checa contra obstáculos
+                        if e.properties.get("tipo") in ["processo", "NullPointer", "InfiniteLoop", "StackOverflow", "BufferOverflow", "MemoryLeak", "Deadlock", "Rival"]:
+                            if self._check_collision_with_obstacles(e):
+                                e.properties["x"] = e.properties.get("last_x", e.properties["x"])
+                                e.properties["y"] = e.properties.get("last_y", e.properties["y"])
                     
                     self._corruption_from_hostiles()
                 
@@ -444,8 +481,14 @@ class Game:
 
     def _apply_corruption_to_entities(self):
         self.corruption.apply_world_effects(self.loop.entities, self.player)
-        if self.corruption.integrity_failure:
-            self.console.log("!!! KERNEL PANIC: SISTEMA IRRECUPERÁVEL !!!")
+        
+        # Falha por corrupção OU falha por perda total de HP (Saúde)
+        if self.corruption.integrity_failure or self.player.properties.get("health", 0) <= 0:
+            msg = "!!! KERNEL PANIC: SISTEMA IRRECUPERÁVEL !!!"
+            if self.player.properties.get("health", 0) <= 0:
+                msg = "!!! CRITICAL FAILURE: PROCESS TERMINATED (0 HP) !!!"
+            
+            self.console.log(msg)
             self.render() 
             pygame.time.delay(2000)
             self.reset_system(self.level_id, carry_corruption=0.0)

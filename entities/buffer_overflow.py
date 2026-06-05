@@ -5,8 +5,9 @@ from ecs.entity import Entity
 
 class BufferOverflow(Entity):
     """Se load > buffer_size, ele entra em overflow e ataca."""
-    def __init__(self, x, y):
+    def __init__(self, x, y, target=None):
         super().__init__()
+        self.target = target
         self.properties = {
             "tipo": "BufferOverflow",
             "state": "stable",
@@ -16,8 +17,9 @@ class BufferOverflow(Entity):
             "h": 50,
             "buffer_size": 100,
             "load": 50,
-            "speed": 2,
+            "speed": 2.2,
             "color": (255, 100, 0),
+            "collision": True,
             "hostile": True
         }
         self._shake = 0
@@ -35,16 +37,26 @@ class BufferOverflow(Entity):
             self.properties["state"] = "OVERFLOW"
             self.properties["color"] = (255, 0, 0)
             self.properties["hostile"] = True
-            self._shake = (load - size) * 0.5
-            # Persegue jogador ou se move erraticamente
+            self._shake = (load - size) * 0.3
+            
+            # Persegue jogador quando em OVERFLOW
+            if self.target and speed > 0:
+                tx, ty = self.target.properties.get("x", 0), self.target.properties.get("y", 0)
+                dx, dy = tx - self.properties["x"], ty - self.properties["y"]
+                dist = math.sqrt(dx**2 + dy**2)
+                if dist > 5:
+                    self.properties["x"] += (dx / dist) * speed * dt * 1.5 # Corre mais em overflow
+                    self.properties["y"] += (dy / dist) * speed * dt * 1.5
+            
+            # Tremor visual/físico
             self.properties["x"] += random.uniform(-self._shake, self._shake) * dt
             self.properties["y"] += random.uniform(-self._shake, self._shake) * dt
         else:
             self.properties["state"] = "stable"
             self.properties["color"] = (255, 150, 0)
             self._shake = 0
-            # Movimento lento e passivo
-            self.properties["x"] += math.sin(pygame.time.get_ticks() * 0.002) * speed * dt
+            # Movimento lento e passivo (balanço suave)
+            self.properties["x"] += math.sin(pygame.time.get_ticks() * 0.002) * speed * dt * 0.5
 
     def render(self, screen):
         x, y = self.properties["x"], self.properties["y"]

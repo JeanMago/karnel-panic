@@ -177,10 +177,45 @@ class DebuggerGun:
         self.corruption.increase(0.05)
 
         # Comandos Especiais (Shortcuts)
+        if command_str == "tron":
+            return "SIGNAL: TRON_PROTOCOL_ACTIVATED"
+            
         if command_str == "dump":
             items = [f"{k}={v}" for k, v in entity.properties.items()]
             return "DUMP: " + " | ".join(items)
         
+        if command_str == "scan":
+            # Revela propriedades vitais de forma rápida
+            p = entity.properties
+            hp = p.get('health', 'N/A')
+            st = p.get('state', 'N/A')
+            return f"SCAN: [HP: {hp}] [ESTADO: {st}] [TIPO: {p.get('tipo')}]"
+
+        if command_str == "purge":
+            # Deleta sem aumentar corrupção (Execução Limpa)
+            if entity.properties.get("tipo") == "BOSS":
+                return "ERRO: Processo Mestre protegido contra PURGE direto."
+            entity.properties["visible"] = False
+            entity.properties["hostile"] = False
+            entity.properties["state"] = "purged"
+            entity.properties["collision"] = False
+            # O purge compensa o aumento padrão do manual_patch
+            self.corruption.level = max(0.0, self.corruption.level - 0.05)
+            return "EXECUÇÃO LIMPA: Processo purgado sem resíduos de dados."
+
+        if command_str == "optimize":
+            if "speed" in entity.properties:
+                old_sp = entity.properties["speed"]
+                entity.properties["speed"] = float(old_sp) * 1.5
+                return f"OTIMIZAR: Ciclos de CPU aumentados. Velocidade: {entity.properties['speed']}"
+            return "Erro: Alvo não otimizável."
+
+        if command_str == "silence":
+            # Desativa hostilidade temporariamente
+            entity.properties["hostile"] = False
+            entity.properties["color"] = (100, 100, 100)
+            return "SILENCIAR: Lógica hostil suspensa."
+
         if command_str == "freeze":
             if "speed" in entity.properties:
                 entity.properties["speed"] = 0
@@ -196,11 +231,12 @@ class DebuggerGun:
         if command_str == "kill":
             if entity.properties.get("tipo") == "BOSS":
                 damage = entity.take_damage(100)
-                return f"CRITICAL: Processo mestre resistiu. Dano: -{damage}"
+                return f"CRÍTICO: Processo mestre resistiu. Dano: -{damage}"
             entity.properties["visible"] = False
             entity.properties["hostile"] = False
             entity.properties["state"] = "terminated"
-            return "OK: Processo terminado."
+            # Kill aumenta a corrupção (já tratado no manual_patch)
+            return "OK: Processo terminado de forma bruta (+Corrupção)."
 
         if command_str == "heal":
             if "health" in entity.properties:

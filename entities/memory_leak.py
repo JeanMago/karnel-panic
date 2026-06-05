@@ -41,6 +41,7 @@ class MemoryLeak(Entity):
             "speed": 3,
             "leak_rate": 0.1, # chance por frame
             "color": (0, 255, 100),
+            "collision": True,
             "hostile": True
         }
         self.spawned_blocks = [] # Lista de dicts: {x, y, life}
@@ -50,12 +51,31 @@ class MemoryLeak(Entity):
         raw_sp = self.properties.get("speed", 0)
         sp = float(raw_sp) * dt if raw_sp is not None else 0
         
-        self.properties["x"] += self._dir[0] * sp
-        self.properties["y"] += self._dir[1] * sp
+        # Normaliza direção para evitar velocidade diagonal extra
+        dir_x, dir_y = self._dir
+        dist = math.sqrt(dir_x**2 + dir_y**2)
+        if dist > 0:
+            nx, ny = dir_x / dist, dir_y / dist
+        else:
+            nx, ny = 0, 0
 
-        # Bouncing (approximate bounds for 1280x720)
-        if self.properties["x"] < 0 or self.properties["x"] > 1235: self._dir[0] *= -1
-        if self.properties["y"] < 0 or self.properties["y"] > 675: self._dir[1] *= -1
+        self.properties["x"] += nx * sp
+        self.properties["y"] += ny * sp
+
+        # Bouncing (Mundo 4000x3000)
+        if self.properties["x"] < 0:
+            self.properties["x"] = 0
+            self._dir[0] *= -1
+        elif self.properties["x"] > 3950:
+            self.properties["x"] = 3950
+            self._dir[0] *= -1
+
+        if self.properties["y"] < 0:
+            self.properties["y"] = 0
+            self._dir[1] *= -1
+        elif self.properties["y"] > 2950:
+            self.properties["y"] = 2950
+            self._dir[1] *= -1
 
         raw_rate = self.properties.get("leak_rate", 0)
         rate = float(raw_rate) if raw_rate is not None else 0

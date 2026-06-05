@@ -25,6 +25,7 @@ class InfiniteLoop(Entity):
             "h": 36,
             "speed": speed,
             "color": (255, 180, 0),
+            "collision": True,
             "hostile": True,
         }
 

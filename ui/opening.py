@@ -1,104 +1,88 @@
 import pygame
 import math
+import random
 from config import FPS, WIDTH, HEIGHT
 
 def show_opening_crawl(game):
     screen = game.screen
     clock = game.clock
     
-    # Texto da história
-    story_text = [
-        "KERNEL.PANIC(2026)",
-        "",
-        "Episódio I",
-        "A GRANDE CORRUPÇÃO",
-        "",
-        "O sistema está em colapso.",
-        "Arquivos vitais foram perdidos",
-        "no abismo do Heap.",
-        "",
-        "Como um processo sentinela,",
-        "você deve navegar pelos",
-        "setores corrompidos e",
-        "restaurar a ordem binária.",
-        "",
-        "Armado com a DEBUGGER GUN,",
-        "você tem o poder de",
-        "reescrever a realidade.",
-        "",
-        "Mas cuidado: cada patch",
-        "aplicado consome sua própria",
-        "integridade...",
-        "",
-        "O Kernel espera.",
-        "O tempo está acabando."
+    # 1. FASE DE BOOT (Cinemática)
+    boot_logs = [
+        "> INITIALIZING KERNEL_LOADER...",
+        "> CHECKING MEMORY INTEGRITY... [OK]",
+        "> LOADING SECURITY_PROTOCOLS... [FAIL]",
+        "> WARNING: UNKNOWN PROCESS DETECTED: 'Sentinel_Alpha.err'",
+        "> SYSTEM CORRUPTION DETECTED AT 15.4%",
+        "> URGENT: MANUAL INTERVENTION REQUIRED.",
+        "> DEPLOYING SENTINEL.EXE..."
     ]
-
-    font = pygame.font.SysFont("monospace", 32, bold=True)
     
-    # Preparar superfícies de texto para renderização mais rápida
-    text_surfaces = []
-    for line in story_text:
-        surf = font.render(line, True, (255, 220, 0)) # Amarelo clássico
-        text_surfaces.append(surf)
-
-    # Variáveis de animação
-    scroll_y = float(HEIGHT)
-    base_speed = 1.0
+    font = pygame.font.SysFont("monospace", 18)
+    lines_to_draw = []
     
-    running = True
-    while running:
-        sw, sh = screen.get_width(), screen.get_height()
-        screen.fill((0, 0, 0)) # Fundo preto profundo
+    # Animação de logs surgindo
+    for log in boot_logs:
+        for i in range(len(log) + 1):
+            screen.fill((5, 5, 10))
+            # Desenha linhas já completas
+            for idx, line in enumerate(lines_to_draw):
+                txt = font.render(line, True, (0, 255, 0))
+                screen.blit(txt, (40, 100 + idx * 25))
+            
+            # Desenha linha atual sendo "digitada"
+            current_txt = font.render(log[:i] + "_", True, (200, 255, 200))
+            screen.blit(current_txt, (40, 100 + len(lines_to_draw) * 25))
+            
+            pygame.display.flip()
+            pygame.time.delay(20)
+            
+            # Checar eventos para permitir pular
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT: pygame.quit(); return
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE: break
+        lines_to_draw.append(log)
+        pygame.time.delay(200)
 
-        # Acelerar abertura ao segurar Espaço ou Clique
-        keys = pygame.key.get_pressed()
-        mouse_buttons = pygame.mouse.get_pressed()
-        if keys[pygame.K_SPACE] or mouse_buttons[0]:
-            scroll_speed = base_speed * 4.0
-        else:
-            scroll_speed = base_speed
+    pygame.time.delay(1000)
 
-        # Desenhar estrelas estáticas (simples)
-        random_stars = [(int(sw * 0.1), int(sh * 0.2)), (int(sw * 0.8), int(sh * 0.5)), 
-                        (int(sw * 0.4), int(sh * 0.8)), (int(sw * 0.7), int(sh * 0.1))]
-        for star in random_stars:
-            pygame.draw.circle(screen, (255, 255, 255), star, 1)
+    # 2. ALERTA CRÍTICO
+    alert_font = pygame.font.SysFont("monospace", 40, bold=True)
+    for _ in range(3):
+        screen.fill((50, 0, 0))
+        txt = alert_font.render("!!! INTRUSÃO DETECTADA !!!", True, (255, 255, 255))
+        screen.blit(txt, (WIDTH//2 - txt.get_width()//2, HEIGHT//2 - 20))
+        pygame.display.flip()
+        pygame.time.delay(200)
+        screen.fill((5, 5, 10))
+        pygame.display.flip()
+        pygame.time.delay(200)
 
-        # Renderizar o texto com efeito de perspectiva (simulado)
-        curr_y = scroll_y
-        for i, surf in enumerate(text_surfaces):
-            if -100 < curr_y < sh + 100:
-                progresso = curr_y / sh
-                escala = 0.4 + (max(0, progresso) * 0.6)
-                if escala > 0:
-                    scaled_w = int(surf.get_width() * escala)
-                    scaled_h = int(surf.get_height() * escala)
-                    if scaled_w > 0 and scaled_h > 0:
-                        scaled_surf = pygame.transform.scale(surf, (scaled_w, scaled_h))
-                        screen.blit(scaled_surf, (sw // 2 - scaled_w // 2, curr_y))
-            curr_y += 50 * (0.4 + (max(0, curr_y/sh) * 0.6)) # Espaçamento também escalado
+    # 3. CONFIRMAÇÃO PARA COMEÇAR
+    while True:
+        screen.fill((5, 5, 10))
+        # Grade de fundo sutil
+        for x in range(0, WIDTH, 50): pygame.draw.line(screen, (10, 20, 10), (x, 0), (x, HEIGHT))
+        for y in range(0, HEIGHT, 50): pygame.draw.line(screen, (10, 20, 10), (0, y), (WIDTH, y))
 
-        scroll_y -= scroll_speed
+        t1 = alert_font.render("INICIALIZAR KERNEL?", True, (0, 255, 255))
+        t2 = font.render("O RIVAL 'SENTINEL_ALPHA' JÁ ESTÁ NO SISTEMA.", True, (200, 200, 200))
+        t3 = alert_font.render("[ PRESSIONE 'Y' PARA CONFIRMAR ]", True, (255, 255, 0))
+        
+        # Efeito de pulso no texto de confirmação
+        alpha = 155 + math.sin(pygame.time.get_ticks() * 0.01) * 100
+        t3.set_alpha(int(alpha))
 
-        # Se todo o texto sumiu no topo, termina
-        if curr_y < -50:
-            running = False
-
-        # Instrução na tela
-        hint_font = pygame.font.SysFont("monospace", 14)
-        hint_surf = hint_font.render("[ESPAÇO/CLIQUE] Acelerar  |  [ESC] Pular", True, (100, 100, 100))
-        screen.blit(hint_surf, (sw - hint_surf.get_width() - 10, sh - 25))
+        screen.blit(t1, (WIDTH//2 - t1.get_width()//2, HEIGHT//3))
+        screen.blit(t2, (WIDTH//2 - t2.get_width()//2, HEIGHT//2))
+        screen.blit(t3, (WIDTH//2 - t3.get_width()//2, HEIGHT//2 + 80))
 
         pygame.display.flip()
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                import sys
-                sys.exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    running = False
         
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: pygame.quit(); return
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_y: return # Inicia o jogo
+                if event.key == pygame.K_ESCAPE: return False # Volta
         clock.tick(FPS)
+

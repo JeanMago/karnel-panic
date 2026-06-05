@@ -16,6 +16,7 @@ class Boss(Entity):
             "health": health,
             "max_health": health,
             "color": color,
+            "collision": True,
             "hostile": True,
             "state": "active",
             "speed": 2,
