@@ -10,13 +10,17 @@ class Entity:
     def is_hostile(self) -> bool:
         return bool(self.properties.get("hostile"))
 
-    def update(self, dt):
-        pass
-
-    def render(self, screen):
-        pass
+    def should_render(self) -> bool:
+        """Verifica se a entidade deve ser desenhada."""
+        return bool(self.properties.get("visible", True))
 
     def collide(self, pos):
+        # Se a colisão estiver desativada ou a vida for zero, ignora
+        if not self.properties.get("collision", True):
+            return False
+        if self.properties.get("health", 1) is not None and self.properties.get("health", 1) <= 0:
+            return False
+
         x, y = pos
         ex = self.properties.get("x", 0)
         ey = self.properties.get("y", 0)

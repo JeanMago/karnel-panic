@@ -1,5 +1,6 @@
 import pygame
 import random
+import math
 from ecs.entity import Entity
 
 class MemoryBlock(Entity):

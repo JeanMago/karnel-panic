@@ -4,6 +4,7 @@ Fases (/root, /bin, /lib reservados para expansão): cada nível monta entidades
 
 import pygame
 import random
+import math
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 

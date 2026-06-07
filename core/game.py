@@ -159,6 +159,11 @@ class Game:
                     self.console.log("SINAL BLOQUEADO: Obstáculo detectado.")
                 return
 
+        # Se clicou no vazio, desseleciona
+        if self.selected:
+            self.selected = None
+            self.console.log("DESSELECIONAR: Foco liberado.")
+
     def _has_line_of_sight(self, start_ent, end_entity):
         if end_entity.properties.get("collision"): return True
         
@@ -195,6 +200,10 @@ class Game:
                     tron = TronGame(self.screen, self.clock)
                     tron.run()
                     self.console.log("Protocolo Tron finalizado.")
+                
+                # Desseleciona após comando de terminal bem sucedido (ou tentativa)
+                self.selected = None
+                self.code_editor.active = False # Fecha o editor automaticamente
             return
 
         if event.key == pygame.K_c:
@@ -227,6 +236,7 @@ class Game:
                 self.console.log("CUT token: só funciona no Player")
             self.laser_frames = 4
             self.laser_color = (255, 180, 80)
+            self.selected = None # Desseleciona após alteração
             return
 
         if event.key == pygame.K_x:
@@ -239,6 +249,8 @@ class Game:
                 self.console.log("CUT: sem propriedade válida neste alvo")
             self.laser_frames = 4
             self.laser_color = (255, 50, 50)
+            self.selected = None # Desseleciona após alteração
+            return
 
         if event.key == pygame.K_v:
             dest = self.debugger.paste(self.selected)
@@ -248,6 +260,8 @@ class Game:
                 self.console.log("PASTE: buffer vazio ou destino inválido")
             self.laser_frames = 4
             self.laser_color = (50, 50, 255)
+            self.selected = None # Desseleciona após alteração
+            return
 
         if event.key == pygame.K_p:
             what = self.debugger.smart_patch(self.selected)
@@ -257,6 +271,7 @@ class Game:
                 self.console.log("PATCH: nada a corrigir")
             self.laser_frames = 4
             self.laser_color = (50, 255, 50)
+            self.selected = None # Desseleciona após alteração
 
     def render(self):
         self.camera.update(self.player)
@@ -289,6 +304,10 @@ class Game:
 
         # Renderizar entidades (com offset da câmera)
         for e in self.loop.entities:
+            # Pula render de entidades "mortas" ou invisíveis
+            if not e.should_render() or (e.properties.get("health", 1) is not None and e.properties.get("health", 1) <= 0):
+                continue
+                
             orig_x = e.properties.get("x", 0)
             orig_y = e.properties.get("y", 0)
             
@@ -316,7 +335,10 @@ class Game:
         info = get_level_info(self.level_id)
         name = info.name if info else f"Nível {self.level_id}"
         path = info.path_hint if info else "/"
-        self.hud.draw(self.screen, self.corruption, name, path)
+        self.hud.draw(self.screen, self.corruption, self.player, name, path)
+        
+        # Chamada do Mini-mapa
+        self.hud.draw_minimap(self.screen, self.loop.entities, self.player)
 
         peek_cut = self.debugger.peek_cut_key(self.selected) if self.selected else None
         peek_paste = self.debugger.peek_paste_destination(self.selected) if self.selected else None
@@ -333,30 +355,35 @@ class Game:
 
     def _check_objectives(self):
         exit_node = None
-        boss_defeated = True # Se não houver boss, libera
+        boss_defeated = True
+        boss_count = 0
         
         for e in self.loop.entities:
             if e.properties.get("tipo") == "TERMINAL_EXIT":
                 exit_node = e
             elif e.properties.get("tipo") == "BOSS":
+                boss_count += 1
                 if e.properties.get("health", 0) > 0:
                     boss_defeated = False
 
         if exit_node:
-            exit_node.properties["active"] = boss_defeated
+            # Ativa a saída se todos os bosses foram derrotados (ou se não houver)
+            is_active = boss_defeated and boss_count >= 0
+            exit_node.properties["active"] = is_active
             
             px, py = self.player.properties["x"], self.player.properties["y"]
             pw, ph = self.player.properties.get("w", 40), self.player.properties.get("h", 40)
             ex, ey = exit_node.properties["x"], exit_node.properties["y"]
             ew, eh = exit_node.properties["w"], exit_node.properties["h"]
             
-            if boss_defeated and px < ex + ew and px + pw > ex and py < ey + eh and py + ph > ey:
-                self.console.log("BOSS NEUTRALIZADO. SEGURANÇA DO SETOR RESTAURADA.")
-                pygame.time.delay(1000)
+            # Se colidir com a saída ATIVA
+            if is_active and px < ex + ew and px + pw > ex and py < ey + eh and py + ph > ey:
+                self.console.log(">> CONEXÃO ESTABELECIDA. TRANSMITINDO DADOS...")
+                pygame.time.delay(1200)
                 
-                recovery = 0.15 * (1.0 - self.corruption.level)
+                recovery = 0.20 * (1.0 - self.corruption.level)
                 self.corruption.level = max(0.0, self.corruption.level - recovery)
-                self.console.log(f"REPARAÇÃO AUTOMÁTICA: -{recovery*100:.1f}% de corrupção.")
+                self.console.log(f"REPARAÇÃO DO SETOR: -{recovery*100:.1f}% corrupção.")
 
                 next_level = self.level_id + 1
                 curr_max = int(self.saved.get("max_level", 1))
@@ -365,7 +392,6 @@ class Game:
                 if self.level_id == 7:
                     self.console.log("!!! KERNEL TOTALMENTE REESTRUTURADO !!!")
                     pygame.time.delay(2000)
-                    # Aqui poderíamos chamar um final cinematográfico
                     next_level = 1
                 
                 curr_corruption = self.corruption.level
