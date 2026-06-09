@@ -53,8 +53,17 @@ class Game:
         self.audio = AudioManager()
         self.laser_color = (255, 255, 255)
         self.level_id = 1
+        self.is_fullscreen = False
         self.saved = load_state()
         self.reset_system(self.saved.get("level", 1))
+
+    def toggle_fullscreen(self):
+        self.is_fullscreen = not self.is_fullscreen
+        if self.is_fullscreen:
+            # No pygame-ce, SCALED + FULLSCREEN funciona melhor com (0,0) ou a resolução interna
+            self.screen = pygame.display.set_mode((self.width, self.height), pygame.SCALED | pygame.FULLSCREEN)
+        else:
+            self.screen = pygame.display.set_mode((self.width, self.height), pygame.SCALED | pygame.RESIZABLE)
 
     def reset_system(self, level_id: int, carry_corruption: float = None):
         self.level_id = int(level_id)
@@ -460,7 +469,7 @@ class Game:
                         self.select_entity(event.pos)
                     if event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_F11:
-                            pygame.display.toggle_fullscreen()
+                            self.toggle_fullscreen()
                         elif event.key == pygame.K_ESCAPE:
                             pause_action = menus.show_pause_menu(self)
                             if pause_action == "quit":

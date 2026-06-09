@@ -55,7 +55,7 @@ def show_menu(game):
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
-                    pygame.display.toggle_fullscreen()
+                    game.toggle_fullscreen()
                 elif event.key == pygame.K_UP:
                     selected_idx = (selected_idx - 1) % len(options)
                 elif event.key == pygame.K_DOWN:
@@ -191,7 +191,7 @@ def show_settings(game):
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
-                    pygame.display.toggle_fullscreen()
+                    game.toggle_fullscreen()
                 elif event.key == pygame.K_UP:
                     menu_idx = (menu_idx - 1) % 3
                 elif event.key == pygame.K_DOWN:
@@ -468,7 +468,7 @@ def show_tutorial(game):
                     current_page = (current_page + 1) % len(pages)
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
-                    pygame.display.toggle_fullscreen()
+                    game.toggle_fullscreen()
                 elif event.key == pygame.K_LEFT:
                     current_page = (current_page - 1) % len(pages)
                 elif event.key == pygame.K_RIGHT:
@@ -544,7 +544,7 @@ def show_level_selection(game):
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
-                    pygame.display.toggle_fullscreen()
+                    game.toggle_fullscreen()
                 elif event.key == pygame.K_UP:
                     # Pula bloqueados ao subir
                     selected_idx = (selected_idx - 1) % len(levels)
@@ -612,7 +612,7 @@ def show_pause_menu(game):
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
-                    pygame.display.toggle_fullscreen()
+                    game.toggle_fullscreen()
                 elif event.key == pygame.K_UP:
                     selected_idx = (selected_idx - 1) % len(options)
                 elif event.key == pygame.K_DOWN:

@@ -7,6 +7,14 @@ class Entity:
     def debug_label(self) -> str:
         return self.__class__.__name__
 
+    def update(self, dt):
+        """Atualização lógica (opcional em subclasses)."""
+        pass
+
+    def render(self, screen):
+        """Desenho da entidade (opcional em subclasses)."""
+        pass
+
     def is_hostile(self) -> bool:
         return bool(self.properties.get("hostile"))
 
