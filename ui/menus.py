@@ -624,3 +624,66 @@ def show_pause_menu(game):
                 elif event.key == pygame.K_ESCAPE:
                     return "resume"
         clock.tick(FPS)
+
+
+def show_ending(game):
+    """Tela final de vitória após vencer o Setor 7."""
+    screen = game.screen
+    clock = game.clock
+    font_title = pygame.font.SysFont("monospace", 60, bold=True)
+    font_text = pygame.font.SysFont("monospace", 24)
+    font_small = pygame.font.SysFont("monospace", 18)
+
+    game.audio.play_music("menu") # Ou uma música de vitória se houver
+
+    credits = [
+        "SISTEMA REESTRUTURADO COM SUCESSO",
+        "---------------------------------",
+        "Você purificou o Kernel do colapso iminente.",
+        "A corrupção foi contida e a paz binária restaurada.",
+        "",
+        "CRÉDITOS:",
+        "Desenvolvimento:",
+        "Jean k. de Moura",
+        "Nicolas Castro",
+        "Henrique Froeder",
+        "ÍGOR PASLAUSKI",
+        "",
+        "Arte: Glitch_Generator v2.0",
+        "Música: 8-bit Chaos Engine",
+        "",
+        "Obrigado por jogar!",
+        "",
+        "Pressione [ESCAPE] para retornar ao menu."
+    ]
+
+    y_scroll = screen.get_height()
+
+    while True:
+        sw, sh = screen.get_width(), screen.get_height()
+        screen.fill((10, 20, 10)) # Verde escuro de sucesso
+
+        title_surf = font_title.render("KERNEL.RESTORED", True, (0, 255, 100))
+        screen.blit(title_surf, (sw // 2 - title_surf.get_width() // 2, 50))
+
+        for i, line in enumerate(credits):
+            color = (0, 255, 0) if "RESTORED" in line else (200, 255, 200)
+            text_surf = font_text.render(line, True, color)
+            screen.blit(text_surf, (sw // 2 - text_surf.get_width() // 2, y_scroll + i * 40))
+
+        y_scroll -= 1 # Velocidade do scroll
+
+        # Se terminar o scroll, para ou reinicia
+        if y_scroll < -len(credits) * 40 - 100:
+             y_scroll = sh // 2
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); import sys; sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE or event.key == pygame.K_RETURN:
+                    return
+
+        clock.tick(FPS)

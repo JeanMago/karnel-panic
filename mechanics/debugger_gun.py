@@ -404,6 +404,26 @@ class DebuggerGun:
                         self.corruption.level = max(0.0, self.corruption.level - 0.05)
                         return res + " (CONFLITO DE IDENTIDADE LIMPO)"
 
+                # 4. MutexMaster: lock_state = 'UNLOCKED'
+                if entity.properties.get("name") == "MUTEX_MASTER_SYNC":
+                    if "lock_state" in command_str and entity.properties.get("lock_state") == "UNLOCKED":
+                        self.corruption.level = max(0.0, self.corruption.level - 0.05)
+                        return res + " (SINCRONIZAÇÃO LIBERADA)"
+
+                # 5. RegistryTyrant: access_level != 'ADMIN' ou registry_key
+                if entity.properties.get("name") == "REGISTRY_TYRANT_DB":
+                    if ("access_level" in command_str and entity.properties.get("access_level") != "ADMIN") or \
+                       ("registry_key" in command_str and "HKEY" not in str(entity.properties.get("registry_key", ""))):
+                        self.corruption.level = max(0.0, self.corruption.level - 0.05)
+                        return res + " (PRIVILÉGIOS REVOGADOS)"
+
+                # 6. FirewallDragon: port_status = 'OPEN' ou ip_source
+                if entity.properties.get("name") == "FIREWALL_DRAGON_NET":
+                    if ("port_status" in command_str and entity.properties.get("port_status") == "OPEN") or \
+                       ("ip_source" in command_str and entity.properties.get("ip_source") != "127.0.0.1"):
+                        self.corruption.level = max(0.0, self.corruption.level - 0.05)
+                        return res + " (BRECHA DE REDE EXPOSTA)"
+
                 # Se não foi uma vulnerabilidade limpa, aplica a corrupção calculada
                 self.corruption.increase(base_corruption)
                 

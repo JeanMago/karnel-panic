@@ -39,19 +39,27 @@ class MemoryLeak(Entity):
             "y": y,
             "w": 45,
             "h": 45,
-            "speed": 3,
-            "leak_rate": 0.1, # chance por frame
+            "speed": 3.0,
+            "leak_rate": 0.15, # chance por frame
             "color": (0, 255, 100),
             "collision": True,
             "hostile": True
         }
         self.spawned_blocks = [] # Lista de dicts: {x, y, life}
-        self._dir = [1, 1]
+        self._dir = [random.choice([-1, 1]), random.choice([-1, 1])]
+        self._change_dir_timer = 0
 
     def update(self, dt):
         raw_sp = self.properties.get("speed", 0)
         sp = float(raw_sp) * dt if raw_sp is not None else 0
         
+        # Mudar direção aleatoriamente de vez em quando
+        self._change_dir_timer -= 1 * dt
+        if self._change_dir_timer <= 0:
+            angle = random.uniform(0, math.pi * 2)
+            self._dir = [math.cos(angle), math.sin(angle)]
+            self._change_dir_timer = random.randint(60, 180)
+
         # Normaliza direção para evitar velocidade diagonal extra
         dir_x, dir_y = self._dir
         dist = math.sqrt(dir_x**2 + dir_y**2)
@@ -63,20 +71,29 @@ class MemoryLeak(Entity):
         self.properties["x"] += nx * sp
         self.properties["y"] += ny * sp
 
-        # Bouncing (Mundo 4000x3000)
-        if self.properties["x"] < 0:
-            self.properties["x"] = 0
-            self._dir[0] *= -1
-        elif self.properties["x"] > 3950:
-            self.properties["x"] = 3950
-            self._dir[0] *= -1
+        # Bouncing (Mundo 4000x3000) - Agora com margem maior e mudando _dir
+        margin = 100
+        hit_wall = False
+        if self.properties["x"] < margin:
+            self.properties["x"] = margin
+            self._dir[0] = abs(self._dir[0])
+            hit_wall = True
+        elif self.properties["x"] > 4000 - margin - self.properties["w"]:
+            self.properties["x"] = 4000 - margin - self.properties["w"]
+            self._dir[0] = -abs(self._dir[0])
+            hit_wall = True
 
-        if self.properties["y"] < 0:
-            self.properties["y"] = 0
-            self._dir[1] *= -1
-        elif self.properties["y"] > 2950:
-            self.properties["y"] = 2950
-            self._dir[1] *= -1
+        if self.properties["y"] < margin:
+            self.properties["y"] = margin
+            self._dir[1] = abs(self._dir[1])
+            hit_wall = True
+        elif self.properties["y"] > 3000 - margin - self.properties["h"]:
+            self.properties["y"] = 3000 - margin - self.properties["h"]
+            self._dir[1] = -abs(self._dir[1])
+            hit_wall = True
+        
+        if hit_wall:
+            self._change_dir_timer = random.randint(30, 90)
 
         raw_rate = self.properties.get("leak_rate", 0)
         rate = float(raw_rate) if raw_rate is not None else 0
@@ -92,6 +109,21 @@ class MemoryLeak(Entity):
             b["life"] -= 1 * dt
         
         self.spawned_blocks = [b for b in self.spawned_blocks if b["life"] > 0]
+
+    def on_collision(self):
+        """Inverte a direção ao bater em um obstáculo."""
+        self._dir[0] *= -1
+        self._dir[1] *= -1
+        # Adiciona um pequeno desvio aleatório para não ficar preso
+        self._dir[0] += random.uniform(-0.2, 0.2)
+        self._dir[1] += random.uniform(-0.2, 0.2)
+        self._change_dir_timer = random.randint(30, 60)
+
+    def get_damage_rects(self):
+        rects = super().get_damage_rects()
+        for b in self.spawned_blocks:
+            rects.append(pygame.Rect(b["x"], b["y"], 12, 12))
+        return rects
 
     def render(self, screen):
         x, y = self.properties["x"], self.properties["y"]

@@ -250,3 +250,142 @@ class PanicCore(Boss):
                     pygame.draw.ellipse(screen, color, (x + i*10, y + i*10, sw, sh), 2)
             pygame.draw.circle(screen, (255, 255, 255), (int(x+w//2), int(y+h//2)), int(w//8))
         self._common_render(screen, draw_shape)
+
+class MutexMaster(Boss):
+    """Boss da Fase 4: Sincronização e Travas. Vulnerável a scan e liberação de lock."""
+    def __init__(self, x, y):
+        super().__init__(x, y, "MUTEX_MASTER_SYNC", 450, (0, 150, 255))
+        self.properties["lock_state"] = "LOCKED"
+        self.properties["resource"] = "CPU_CYCLES"
+        self.properties["speed"] = 1.5
+        self._reaction_cooldown = 0
+
+    def update(self, dt):
+        if self.is_dead(): return
+        
+        if self._reaction_cooldown > 0:
+            self._reaction_cooldown -= 1 * dt
+
+        state = self.properties.get("lock_state", "LOCKED")
+        if state == "UNLOCKED" and self._reaction_cooldown <= 0:
+            self.take_damage(100)
+            self.properties["lock_state"] = "LOCKED"
+            self.properties["speed"] = 4.0
+            self._reaction_cooldown = 120
+            return
+
+        if self._reaction_cooldown <= 0:
+            self.properties["speed"] = 1.5 + (0.5 * (1.0 - (self.properties["health"] / self.properties["max_health"])))
+            
+        sp = float(self.properties.get("speed", 1.5))
+        self._phase_timer += 0.01 * sp * dt
+        # Movimento em '8'
+        self.properties["x"] += math.cos(self._phase_timer) * 5 * dt
+        self.properties["y"] += math.sin(self._phase_timer * 2) * 3 * dt
+
+    def render(self, screen):
+        def draw_shape(color):
+            x, y, w, h = self.properties["x"], self.properties["y"], self.properties["w"], self.properties["h"]
+            # Desenha um cadeado estilizado
+            pygame.draw.rect(screen, color, (x + 20, y + 40, w - 40, h - 40))
+            pygame.draw.rect(screen, (255, 255, 255), (x + 20, y + 40, w - 40, h - 40), 2)
+            # Arco do cadeado
+            arc_rect = pygame.Rect(x + 30, y + 10, w - 60, 60)
+            pygame.draw.arc(screen, color, arc_rect, 0, math.pi, 5)
+            # Olho/Buraco da chave
+            pygame.draw.circle(screen, (0, 0, 0), (int(x + w//2), int(y + h//2 + 10)), 8)
+        self._common_render(screen, draw_shape)
+
+class RegistryTyrant(Boss):
+    """Boss da Fase 5: Manipulação de dados e chaves de registro. Vulnerável a 'purge' e scan."""
+    def __init__(self, x, y):
+        super().__init__(x, y, "REGISTRY_TYRANT_DB", 500, (200, 200, 50))
+        self.properties["registry_key"] = "HKEY_LOCAL_MACHINE\\SYSTEM"
+        self.properties["access_level"] = "ADMIN"
+        self._anchor_x = x
+        self._anchor_y = y
+
+    def update(self, dt):
+        if self.is_dead(): return
+        
+        # Se o nível de acesso for rebaixado, toma dano massivo
+        access = self.properties.get("access_level", "ADMIN")
+        if access != "ADMIN":
+            self.take_damage(120)
+            self.properties["access_level"] = "ADMIN"
+            return
+
+        # Se a chave for alterada para algo inválido
+        key = self.properties.get("registry_key", "")
+        if "HKEY" not in str(key):
+            self.take_damage(60)
+            self.properties["registry_key"] = "HKEY_LOCAL_MACHINE\\SYSTEM"
+            return
+
+        self._phase_timer += 0.05 * dt
+        # Movimento em grade
+        self.properties["x"] = self._anchor_x + math.sin(self._phase_timer) * 300
+        self.properties["y"] = self._anchor_y + math.cos(self._phase_timer * 0.5) * 200
+
+    def render(self, screen):
+        def draw_shape(color):
+            x, y, w, h = self.properties["x"], self.properties["y"], self.properties["w"], self.properties["h"]
+            # Desenha uma colmeia/grade de dados
+            for i in range(3):
+                for j in range(3):
+                    bx, by = x + i * (w // 3), y + j * (h // 3)
+                    pygame.draw.rect(screen, color, (bx + 5, by + 5, w // 3 - 10, h // 3 - 10), 2)
+                    if random.random() < 0.2:
+                        pygame.draw.rect(screen, (255, 255, 255), (bx + 8, by + 8, w // 3 - 16, h // 3 - 16))
+        self._common_render(screen, draw_shape)
+
+class FirewallDragon(Boss):
+    """Boss da Fase 6: Defesa de rede e pacotes. Vulnerável a injeção de pacotes (PASTE) e Scan."""
+    def __init__(self, x, y):
+        super().__init__(x, y, "FIREWALL_DRAGON_NET", 550, (50, 200, 50))
+        self.properties["port_status"] = "FILTERED"
+        self.properties["ip_source"] = "127.0.0.1"
+        self._trail = [] # Para efeito de "corpo" de dragão/serpente
+
+    def update(self, dt):
+        if self.is_dead(): return
+        
+        # Se a porta for aberta
+        status = self.properties.get("port_status", "FILTERED")
+        if status == "OPEN":
+            self.take_damage(150)
+            self.properties["port_status"] = "FILTERED"
+            return
+
+        # Se o IP for alterado
+        ip = self.properties.get("ip_source", "127.0.0.1")
+        if ip != "127.0.0.1":
+            self.take_damage(40)
+            self.properties["ip_source"] = "127.0.0.1"
+
+        self._phase_timer += 0.08 * dt
+        # Movimento sinuoso (serpente)
+        self.properties["x"] += math.cos(self._phase_timer) * 6 * dt
+        self.properties["y"] += math.sin(self._phase_timer * 0.5) * 8 * dt
+        
+        # Atualiza rastro
+        self._trail.insert(0, (self.properties["x"], self.properties["y"]))
+        if len(self._trail) > 15:
+            self._trail.pop()
+
+    def render(self, screen):
+        def draw_shape(color):
+            x, y, w, h = self.properties["x"], self.properties["y"], self.properties["w"], self.properties["h"]
+            # Desenha o corpo do rastro
+            for i, (tx, ty) in enumerate(self._trail):
+                alpha = 255 - (i * 15)
+                s = pygame.Surface((w - i*6, h - i*6), pygame.SRCALPHA)
+                pygame.draw.rect(s, (*color, alpha), (0, 0, w - i*6, h - i*6), 2)
+                screen.blit(s, (tx + i*3, ty + i*3))
+            
+            # Cabeça
+            pygame.draw.rect(screen, color, (x, y, w, h), 3)
+            # Olhos de pacotes
+            pygame.draw.rect(screen, (255, 255, 255), (x + 20, y + 30, 20, 20))
+            pygame.draw.rect(screen, (255, 255, 255), (x + w - 40, y + 30, 20, 20))
+        self._common_render(screen, draw_shape)

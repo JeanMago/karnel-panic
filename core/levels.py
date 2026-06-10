@@ -17,7 +17,7 @@ from entities.buffer_overflow import BufferOverflow
 from entities.memory_leak import MemoryLeak
 from entities.deadlock import Deadlock
 from entities.rival_sentinel import RivalSentinel
-from entities.bosses import NullMaster, RecursiveOverlord, PanicCore
+from entities.bosses import NullMaster, RecursiveOverlord, PanicCore, MutexMaster, RegistryTyrant, FirewallDragon
 
 
 @dataclass
@@ -218,7 +218,7 @@ def build_level(level_id: int, sw: int, sh: int) -> Tuple[Player, List[Entity]]:
         p_pos = (200, 200)
         player = Player(*p_pos)
         exit_node = Exit(WORLD_W - 200, WORLD_H - 200)
-        entities.append(NullMaster(WORLD_W // 2, WORLD_H // 2))
+        entities.append(MutexMaster(WORLD_W // 2, WORLD_H // 2))
 
         for _ in range(60):
             ox, oy = random.randint(400, WORLD_W-400), random.randint(400, WORLD_H-400)
@@ -234,7 +234,7 @@ def build_level(level_id: int, sw: int, sh: int) -> Tuple[Player, List[Entity]]:
         p_pos = (150, WORLD_H - 150)
         player = Player(*p_pos)
         exit_node = Exit(WORLD_W - 150, 150)
-        entities.append(RecursiveOverlord(WORLD_W // 2, WORLD_H // 2))
+        entities.append(RegistryTyrant(WORLD_W // 2, WORLD_H // 2))
 
         for x in range(300, WORLD_W, 400):
             for y in range(300, WORLD_H, 400):
@@ -254,7 +254,7 @@ def build_level(level_id: int, sw: int, sh: int) -> Tuple[Player, List[Entity]]:
         p_pos = (100, 1500)
         player = Player(*p_pos)
         exit_node = Exit(WORLD_W - 100, 1500)
-        entities.append(PanicCore(WORLD_W // 2, WORLD_H // 2))
+        entities.append(FirewallDragon(WORLD_W // 2, WORLD_H // 2))
         entities.append(RivalSentinel(WORLD_W // 2 + 300, WORLD_H // 2, target=player))
 
         for x in range(800, WORLD_W - 800, 800):

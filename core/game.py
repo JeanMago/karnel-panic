@@ -116,38 +116,30 @@ class Game:
         pw, ph = self.player.properties.get("w", 40), self.player.properties.get("h", 40)
         
         # HITBOX DE DANO: Ligeiramente MAIOR que o corpo físico (2px de folga)
-        # Isso garante que ao encostar fisicamente, o dano seja disparado.
         padding = 2
         p_damage_rect = pygame.Rect(px - padding, py - padding, pw + padding * 2, ph + padding * 2)
 
         for entity in self.loop.entities:
-            if entity is self.player or not entity.is_hostile():
-                continue
-            if not entity.properties.get("visible", True):
+            if entity is self.player:
                 continue
             
-            ex = entity.properties.get("x", 0)
-            ey = entity.properties.get("y", 0)
-            ew = entity.properties.get("w", 40)
-            eh = entity.properties.get("h", 40)
-            
-            e_rect = pygame.Rect(ex, ey, ew, eh)
-
-            if p_damage_rect.colliderect(e_rect):
-                # 1. Aumento GRADUAL (por frame de contato)
-                self.corruption.increase(0.001) 
-                
-                # 2. Dano de IMPACTO (Saúde + Salto de Corrupção)
-                dmg = 10
-                corruption_bump = 0.03
-                
-                if entity.properties.get("tipo") == "BOSS":
-                    dmg = 25
-                    corruption_bump = 0.10
-                
-                if self.player.take_damage(dmg):
-                    self.corruption.increase(corruption_bump)
-                    self.console.log(f"DANO: -{dmg} HP | +{corruption_bump*100:.0f}% Corrupção")
+            for e_rect in entity.get_damage_rects():
+                if p_damage_rect.colliderect(e_rect):
+                    # 1. Aumento GRADUAL (por frame de contato)
+                    self.corruption.increase(0.001) 
+                    
+                    # 2. Dano de IMPACTO (Saúde + Salto de Corrupção)
+                    dmg = 10
+                    corruption_bump = 0.03
+                    
+                    if entity.properties.get("tipo") == "BOSS":
+                        dmg = 25
+                        corruption_bump = 0.10
+                    
+                    if self.player.take_damage(dmg):
+                        self.corruption.increase(corruption_bump)
+                        self.console.log(f"DANO: -{dmg} HP | +{corruption_bump*100:.0f}% Corrupção")
+                    break # Só aplica dano de uma hitbox por entidade por frame
 
     def select_entity(self, pos):
         # A posição do mouse (pos) está em Screen Space. 
@@ -400,7 +392,8 @@ class Game:
                 
                 if self.level_id == 7:
                     self.console.log("!!! KERNEL TOTALMENTE REESTRUTURADO !!!")
-                    pygame.time.delay(2000)
+                    pygame.time.delay(1000)
+                    menus.show_ending(self)
                     next_level = 1
                 
                 curr_corruption = self.corruption.level
@@ -509,6 +502,7 @@ class Game:
                             if self._check_collision_with_obstacles(e):
                                 e.properties["x"] = e.properties.get("last_x", e.properties["x"])
                                 e.properties["y"] = e.properties.get("last_y", e.properties["y"])
+                                e.on_collision()
                     
                     self._corruption_from_hostiles()
                 
