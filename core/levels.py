@@ -28,6 +28,7 @@ class LevelInfo:
 
 
 LEVELS = {
+    0: LevelInfo(0, "Sandbox Tutorial", "/mnt/sys/tutorial"),
     1: LevelInfo(1, "The Heap", "/root/var/heap"),
     2: LevelInfo(2, "Stack Overflow", "/bin/stack"),
     3: LevelInfo(3, "Kernel Panic", "/lib/kernel"),
@@ -35,6 +36,9 @@ LEVELS = {
     5: LevelInfo(5, "Registry Hive", "/root/etc/config"),
     6: LevelInfo(6, "Firewall Gate", "/net/filter/ip"),
     7: LevelInfo(7, "Cloud Sync", "/mnt/remote/cloud"),
+    8: LevelInfo(8, "Network Abyss", "/net/deep/void"),
+    9: LevelInfo(9, "Mainframe Core", "/sys/root/core"),
+    10: LevelInfo(10, "The Singularity", "/dev/null/zero"),
 }
 
 class Obstacle(Entity):
@@ -110,8 +114,11 @@ def is_valid_spawn(x, y, w, h, entities: List[Entity], min_dist_to_player=300, p
 def build_level(level_id: int, sw: int, sh: int) -> Tuple[Player, List[Entity]]:
     """Cria áreas GIGANTES (ex: 4000x3000) com labirintos temáticos e spawns seguros."""
     entities: List[Entity] = []
-    WORLD_W = 4000
-    WORLD_H = 3000
+    
+    if level_id == 0:
+        WORLD_W, WORLD_H = 1200, 900
+    else:
+        WORLD_W, WORLD_H = 4000, 3000
 
     # Paredes de borda
     entities.append(Obstacle(0, -50, WORLD_W, 50, label="Boundary"))
@@ -119,7 +126,44 @@ def build_level(level_id: int, sw: int, sh: int) -> Tuple[Player, List[Entity]]:
     entities.append(Obstacle(-50, 0, 50, WORLD_H, label="Boundary"))
     entities.append(Obstacle(WORLD_W, 0, 50, WORLD_H, label="Boundary"))
 
-    if level_id == 1:
+    if level_id == 0:
+        # TUTORIAL: Área pequena e segura
+        p_pos = (200, 450)
+        player = Player(*p_pos)
+        exit_node = Exit(WORLD_W - 150, 450)
+        
+        # Algumas decorações
+        entities.append(Obstacle(400, 200, 400, 40, color=(50, 50, 80)))
+        entities.append(Obstacle(400, 660, 400, 40, color=(50, 50, 80)))
+        
+        # DUMMY_ALPHA: Prática de Cut/Paste/Purge
+        dummy1 = NullPointer(500, 450, target=None)
+        dummy1.properties["hostile"] = False
+        dummy1.properties["speed"] = 2
+        dummy1.properties["name"] = "DUMMY_ALPHA"
+        dummy1.properties["collision"] = True # Força colisão para permitir clique
+        dummy1.properties["reference"] = "@tutorial::fixed" # Força visibilidade
+        dummy1.properties["visible"] = True
+        entities.append(dummy1)
+        
+        # DUMMY_BETA: Prática de chmod -x
+        dummy2 = InfiniteLoop(750, 300)
+        dummy2.properties["hostile"] = True # Começa hostil para testar chmod
+        dummy2.properties["speed"] = 0
+        dummy2.properties["name"] = "DUMMY_BETA"
+        dummy2.properties["collision"] = True
+        entities.append(dummy2)
+
+        # DUMMY_GAMMA: Prática de Smart Patch
+        dummy3 = BufferOverflow(750, 600, target=None)
+        dummy3.properties["hostile"] = False
+        dummy3.properties["load"] = 150
+        dummy3.properties["buffer_size"] = 100
+        dummy3.properties["name"] = "DUMMY_GAMMA"
+        dummy3.properties["collision"] = True
+        entities.append(dummy3)
+
+    elif level_id == 1:
         # THE HEAP: Blocos de memória em grade irregular (fragmentada)
         p_pos = (150, 150)
         player = Player(*p_pos)
@@ -133,9 +177,12 @@ def build_level(level_id: int, sw: int, sh: int) -> Tuple[Player, List[Entity]]:
                     bh = random.randint(150, 400)
                     entities.append(Obstacle(gx, gy, bw, bh, color=(30, 30, 50)))
         
-        # Boss
-        bx, by = WORLD_W // 2 + 500, WORLD_H // 2 + 500
-        entities.append(NullMaster(bx, by))
+        # Boss (Garante que não nasce em obstáculo)
+        for _ in range(20):
+            bx, by = random.randint(1000, WORLD_W-500), random.randint(1000, WORLD_H-500)
+            if is_valid_spawn(bx, by, 120, 120, entities, player_pos=p_pos):
+                entities.append(NullMaster(bx, by))
+                break
         
         # Inimigos comuns com checagem de spawn
         for _ in range(15):
@@ -164,8 +211,12 @@ def build_level(level_id: int, sw: int, sh: int) -> Tuple[Player, List[Entity]]:
             entities.append(Obstacle(x, 0, 100, gap_y, color=(60, 40, 70)))
             entities.append(Obstacle(x, gap_y + 400, 100, WORLD_H - gap_y - 400, color=(60, 40, 70)))
 
-        # Boss
-        entities.append(RecursiveOverlord(WORLD_W // 2, WORLD_H // 2))
+        # Boss (Spawn central limpo)
+        for _ in range(20):
+            bx, by = WORLD_W // 2, WORLD_H // 2
+            if is_valid_spawn(bx, by, 120, 120, entities, player_pos=p_pos):
+                entities.append(RecursiveOverlord(bx, by))
+                break
 
         # Inimigos
         for _ in range(12):
@@ -187,10 +238,6 @@ def build_level(level_id: int, sw: int, sh: int) -> Tuple[Player, List[Entity]]:
         player = Player(*p_pos)
         exit_node = Exit(100, 100)
         
-        # Boss e Rival
-        entities.append(PanicCore(WORLD_W - 600, WORLD_H - 600))
-        entities.append(RivalSentinel(WORLD_W // 2 - 500, WORLD_H // 2 - 500, target=player))
-
         # Labirinto radial/fracturado
         for i in range(8):
             angle = i * (3.1415 / 4)
@@ -200,8 +247,14 @@ def build_level(level_id: int, sw: int, sh: int) -> Tuple[Player, List[Entity]]:
                 if random.random() < 0.8:
                     entities.append(Obstacle(ox-50, oy-50, 150, 150, color=(80, 20, 20)))
 
-        # Boss
-        entities.append(PanicCore(WORLD_W - 600, WORLD_H - 600))
+        # Boss e Rival (Garante spawn limpo)
+        for _ in range(20):
+            bx, by = random.randint(500, WORLD_W-500), random.randint(500, WORLD_H-500)
+            if is_valid_spawn(bx, by, 150, 150, entities, player_pos=p_pos):
+                entities.append(PanicCore(bx, by))
+                break
+        
+        entities.append(RivalSentinel(WORLD_W // 2 - 500, WORLD_H // 2 - 500, target=player))
 
         # Mix de inimigos
         for _ in range(25):
@@ -218,11 +271,17 @@ def build_level(level_id: int, sw: int, sh: int) -> Tuple[Player, List[Entity]]:
         p_pos = (200, 200)
         player = Player(*p_pos)
         exit_node = Exit(WORLD_W - 200, WORLD_H - 200)
-        entities.append(MutexMaster(WORLD_W // 2, WORLD_H // 2))
 
         for _ in range(60):
             ox, oy = random.randint(400, WORLD_W-400), random.randint(400, WORLD_H-400)
             entities.append(Obstacle(ox, oy, 150, 150, color=(40, 60, 40)))
+
+        # Boss (Spawn central limpo)
+        for _ in range(20):
+            bx, by = WORLD_W // 2, WORLD_H // 2
+            if is_valid_spawn(bx, by, 120, 120, entities, player_pos=p_pos):
+                entities.append(MutexMaster(bx, by))
+                break
 
         for _ in range(20):
             ex, ey = random.randint(400, WORLD_W-400), random.randint(400, WORLD_H-400)
@@ -234,13 +293,19 @@ def build_level(level_id: int, sw: int, sh: int) -> Tuple[Player, List[Entity]]:
         p_pos = (150, WORLD_H - 150)
         player = Player(*p_pos)
         exit_node = Exit(WORLD_W - 150, 150)
-        entities.append(RegistryTyrant(WORLD_W // 2, WORLD_H // 2))
 
         for x in range(300, WORLD_W, 400):
             for y in range(300, WORLD_H, 400):
                 if random.random() < 0.8:
                     entities.append(Obstacle(x, y, 300, 40, color=(100, 100, 30)))
                     entities.append(Obstacle(x, y, 40, 300, color=(100, 100, 30)))
+
+        # Boss (Spawn central limpo)
+        for _ in range(20):
+            bx, by = WORLD_W // 2, WORLD_H // 2
+            if is_valid_spawn(bx, by, 120, 120, entities, player_pos=p_pos):
+                entities.append(RegistryTyrant(bx, by))
+                break
 
         for _ in range(30):
             ex, ey = random.randint(200, WORLD_W-200), random.randint(200, WORLD_H-200)
@@ -254,12 +319,19 @@ def build_level(level_id: int, sw: int, sh: int) -> Tuple[Player, List[Entity]]:
         p_pos = (100, 1500)
         player = Player(*p_pos)
         exit_node = Exit(WORLD_W - 100, 1500)
-        entities.append(FirewallDragon(WORLD_W // 2, WORLD_H // 2))
-        entities.append(RivalSentinel(WORLD_W // 2 + 300, WORLD_H // 2, target=player))
 
         for x in range(800, WORLD_W - 800, 800):
             entities.append(Obstacle(x, 0, 80, WORLD_H // 2 - 200, color=(200, 50, 50)))
             entities.append(Obstacle(x, WORLD_H // 2 + 200, 80, WORLD_H // 2 - 200, color=(200, 50, 50)))
+
+        # Boss (Spawn central limpo)
+        for _ in range(20):
+            bx, by = WORLD_W // 2, WORLD_H // 2
+            if is_valid_spawn(bx, by, 150, 150, entities, player_pos=p_pos):
+                entities.append(FirewallDragon(bx, by))
+                break
+
+        entities.append(RivalSentinel(WORLD_W // 2 + 300, WORLD_H // 2, target=player))
 
         for _ in range(40):
             ex, ey = random.randint(200, WORLD_W-200), random.randint(200, WORLD_H-200)
@@ -267,13 +339,11 @@ def build_level(level_id: int, sw: int, sh: int) -> Tuple[Player, List[Entity]]:
             if is_valid_spawn(ex, ey, 50, 50, entities, player_pos=p_pos):
                 entities.append(etype(ex, ey, target=player))
 
-    else:
+    elif level_id == 7:
         # CLOUD SYNC: Final Boss Arena e caos total
         p_pos = (WORLD_W // 2, WORLD_H // 2)
         player = Player(*p_pos)
         exit_node = Exit(150, 150)
-        entities.append(PanicCore(WORLD_W - 500, WORLD_H - 500))
-        entities.append(RivalSentinel(500, 500, target=player))
         
         # Grande arena central
         for i in range(12):
@@ -282,6 +352,15 @@ def build_level(level_id: int, sw: int, sh: int) -> Tuple[Player, List[Entity]]:
             oy = 1500 + math.sin(angle) * 800
             entities.append(Obstacle(ox-40, oy-40, 80, 80, color=(50, 50, 150)))
 
+        # Boss e Rival (Garante spawn limpo)
+        for _ in range(20):
+            bx, by = WORLD_W - 500, WORLD_H - 500
+            if is_valid_spawn(bx, by, 150, 150, entities, player_pos=p_pos):
+                entities.append(PanicCore(bx, by))
+                break
+
+        entities.append(RivalSentinel(500, 500, target=player))
+        
         for _ in range(50):
             ex, ey = random.randint(200, WORLD_W-200), random.randint(200, WORLD_H-200)
             etype = random.choice([NullPointer, InfiniteLoop, StackOverflow, BufferOverflow, MemoryLeak, Deadlock])
@@ -289,6 +368,46 @@ def build_level(level_id: int, sw: int, sh: int) -> Tuple[Player, List[Entity]]:
                 if etype in [NullPointer, BufferOverflow, Deadlock]: entities.append(etype(ex, ey, target=player))
                 else: entities.append(etype(ex, ey))
                 break
+
+    elif level_id == 8:
+        # NETWORK ABYSS: Setores escuros e muita corrupção
+        p_pos = (200, 200)
+        player = Player(*p_pos)
+        exit_node = Exit(WORLD_W - 200, WORLD_H - 200)
+        entities.append(FirewallDragon(WORLD_W // 2, WORLD_H // 2))
+        
+        for _ in range(30):
+            ox, oy = random.randint(400, WORLD_W-400), random.randint(400, WORLD_H-400)
+            entities.append(Obstacle(ox, oy, random.randint(100, 300), 20, color=(0, 0, 40)))
+
+        for _ in range(30):
+            ex, ey = random.randint(400, WORLD_W-400), random.randint(400, WORLD_H-400)
+            if is_valid_spawn(ex, ey, 40, 40, entities, player_pos=p_pos):
+                entities.append(MemoryLeak(ex, ey))
+
+    elif level_id == 9:
+        # MAINFRAME CORE: Boss Rush parcial
+        p_pos = (WORLD_W // 2, 200)
+        player = Player(*p_pos)
+        exit_node = Exit(WORLD_W // 2, WORLD_H - 200)
+        entities.append(RegistryTyrant(WORLD_W // 2, WORLD_H // 2))
+        entities.append(MutexMaster(WORLD_W // 2 - 600, WORLD_H // 2))
+        entities.append(MutexMaster(WORLD_W // 2 + 600, WORLD_H // 2))
+
+    else:
+        # THE SINGULARITY: O verdadeiro fim
+        p_pos = (WORLD_W // 2, WORLD_H // 2)
+        player = Player(*p_pos)
+        exit_node = Exit(WORLD_W // 2, 100)
+        entities.append(PanicCore(WORLD_W // 2, WORLD_H // 2 + 400))
+        entities.append(RivalSentinel(WORLD_W // 2 - 300, WORLD_H // 2 - 300, target=player))
+        entities.append(RivalSentinel(WORLD_W // 2 + 300, WORLD_H // 2 - 300, target=player))
+
+        for i in range(20):
+            angle = i * (math.pi * 2 / 20)
+            ox = WORLD_W // 2 + math.cos(angle) * 500
+            oy = WORLD_H // 2 + math.sin(angle) * 500
+            entities.append(Obstacle(ox-30, oy-30, 60, 60, color=(10, 10, 10)))
 
     entities.insert(0, player)
     entities.append(exit_node)

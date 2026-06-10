@@ -31,8 +31,8 @@ class Camera:
 
     def update(self, target):
         """Faz a câmera seguir o alvo (player)."""
-        x = -target.properties["x"] + int(WIDTH / 2)
-        y = -target.properties["y"] + int(HEIGHT / 2)
+        x = -target.properties["x"] + int(self.width / 2)
+        y = -target.properties["y"] + int(self.height / 2)
         self.camera = pygame.Rect(x, y, self.width, self.height)
 
 class Game:
@@ -90,6 +90,7 @@ class Game:
 
         self.selected = None
         self.laser_frames = 0
+        self.tutorial_step = 0 if self.level_id == 0 else -1
 
     def _clamp_entities(self):
         # Em áreas gigantes, o clamp é opcional ou baseado no tamanho do mapa real.
@@ -129,12 +130,12 @@ class Game:
                     self.corruption.increase(0.001) 
                     
                     # 2. Dano de IMPACTO (Saúde + Salto de Corrupção)
-                    dmg = 10
-                    corruption_bump = 0.03
+                    dmg = 15 # Aumentado de 10
+                    corruption_bump = 0.05 # Aumentado de 0.03
                     
                     if entity.properties.get("tipo") == "BOSS":
-                        dmg = 25
-                        corruption_bump = 0.10
+                        dmg = 30 # Aumentado de 25
+                        corruption_bump = 0.12 # Aumentado de 0.10
                     
                     if self.player.take_damage(dmg):
                         self.corruption.increase(corruption_bump)
@@ -148,8 +149,25 @@ class Game:
         world_y = pos[1] - self.camera.camera.y
         world_pos = (world_x, world_y)
 
+        # Margem de tolerância para cliques (facilita selecionar entidades pequenas)
+        margin = 10
+
         for entity in reversed(self.loop.entities):
-            if entity.collide(world_pos):
+            # Se for o player, a colisão deve ser exata para evitar selecioná-lo sem querer
+            if entity.debug_label() == "Player":
+                if entity.collide(world_pos):
+                    self.selected = entity
+                    self.console.log("INSPECT → Sentinel (Você)")
+                    return
+                continue
+
+            # Para outras entidades, aplica a margem
+            ex = entity.properties.get("x", 0)
+            ey = entity.properties.get("y", 0)
+            ew = entity.properties.get("w", 40)
+            eh = entity.properties.get("h", 40)
+            
+            if (ex - margin <= world_x <= ex + ew + margin) and (ey - margin <= world_y <= ey + eh + margin):
                 if self._has_line_of_sight(self.player, entity):
                     self.selected = entity
                     label = entity.debug_label()
@@ -166,7 +184,7 @@ class Game:
             self.console.log("DESSELECIONAR: Foco liberado.")
 
     def _has_line_of_sight(self, start_ent, end_entity):
-        if end_entity.properties.get("collision"): return True
+        if start_ent is end_entity: return True
         
         x1, y1 = start_ent.properties["x"] + 20, start_ent.properties["y"] + 20
         x2, y2 = end_entity.properties["x"] + 20, end_entity.properties["y"] + 20
@@ -181,7 +199,8 @@ class Game:
             ty = y1 + (dy * i / steps)
             for other in self.loop.entities:
                 if other is start_ent or other is end_entity: continue
-                if other.properties.get("collision"):
+                # Apenas obstáculos e inimigos sólidos bloqueiam a visão (ignora processos voláteis)
+                if other.properties.get("collision") and other.properties.get("tipo") != "processo":
                     ox, oy = other.properties["x"], other.properties["y"]
                     ow, oh = other.properties["w"], other.properties["h"]
                     if ox <= tx <= ox + ow and oy <= ty <= oy + oh:
@@ -202,8 +221,10 @@ class Game:
                     tron.run()
                     self.console.log("Protocolo Tron finalizado.")
                 
-                # Desseleciona após comando de terminal bem sucedido (ou tentativa)
-                self.selected = None
+                # Desseleciona apenas se o alvo foi purgado ou destruído
+                if not self.selected.properties.get("visible", True) or (self.selected.properties.get("health", 1) or 1) <= 0:
+                    self.selected = None
+                
                 self.code_editor.active = False # Fecha o editor automaticamente
             return
 
@@ -237,7 +258,6 @@ class Game:
                 self.console.log("CUT token: só funciona no Player")
             self.laser_frames = 4
             self.laser_color = (255, 180, 80)
-            self.selected = None # Desseleciona após alteração
             return
 
         if event.key == pygame.K_x:
@@ -250,31 +270,132 @@ class Game:
                 self.console.log("CUT: sem propriedade válida neste alvo")
             self.laser_frames = 4
             self.laser_color = (255, 50, 50)
-            self.selected = None # Desseleciona após alteração
             return
 
         if event.key == pygame.K_v:
             dest = self.debugger.paste(self.selected)
             if dest:
                 self.console.log(f"PASTE → {dest}")
+                # Desseleciona apenas se o boss morreu na injeção
+                if (self.selected.properties.get("health", 1) or 1) <= 0:
+                    self.selected = None
             else:
                 self.console.log("PASTE: buffer vazio ou destino inválido")
             self.laser_frames = 4
             self.laser_color = (50, 50, 255)
-            self.selected = None # Desseleciona após alteração
             return
 
         if event.key == pygame.K_p:
             what = self.debugger.smart_patch(self.selected)
             if what:
                 self.console.log(f"PATCH aplicado em: {what}")
+                if (self.selected.properties.get("health", 1) or 1) <= 0:
+                    self.selected = None
             else:
                 self.console.log("PATCH: nada a corrigir")
             self.laser_frames = 4
             self.laser_color = (50, 255, 50)
-            self.selected = None # Desseleciona após alteração
 
+    def _update_tutorial(self):
+        """Lógica de progressão do tutorial passo a passo."""
+        if self.tutorial_step == -1: return
+
+        if self.tutorial_step == 0:
+            # Step 0: Move
+            px, py = self.player.properties["x"], self.player.properties["y"]
+            if abs(px - 200) > 50 or abs(py - 450) > 50:
+                self.tutorial_step = 1
+
+        elif self.tutorial_step == 1:
+            # Step 1: Select DUMMY_ALPHA
+            if self.selected and self.selected.properties.get("name") == "DUMMY_ALPHA":
+                self.tutorial_step = 2
+
+        elif self.tutorial_step == 2:
+            # Step 2: Open Terminal
+            if self.code_editor.active:
+                self.tutorial_step = 3
+
+        elif self.tutorial_step == 3:
+            # Step 3: Run 'dump'
+            if self.console.logs and "DUMP:" in self.console.logs[-1].upper():
+                self.tutorial_step = 4
+
+        elif self.tutorial_step == 4:
+            # Step 4: Run 'scan'
+            if self.console.logs and "SCAN:" in self.console.logs[-1].upper():
+                self.tutorial_step = 5
+        elif self.tutorial_step == 5:
+            # Step 5: Cut speed
+            # Garante que o terminal foi fechado antes de pedir o CUT
+            if not self.code_editor.active:
+                if self.debugger.buffers[0] is not None or self.debugger.buffers[1] is not None:
+                    self.tutorial_step = 6
+
+        elif self.tutorial_step == 6:
+            # Step 6: Select DUMMY_BETA
+            if self.selected and self.selected.properties.get("name") == "DUMMY_BETA":
+                self.tutorial_step = 7
+
+        elif self.tutorial_step == 7:
+            # Step 7: Paste speed
+            if self.selected and self.selected.properties.get("name") == "DUMMY_BETA":
+                if (self.selected.properties.get("speed") or 0) > 0:
+                    self.tutorial_step = 8
+
+        elif self.tutorial_step == 8:
+            # Step 8: Open Terminal on DUMMY_BETA
+            if self.code_editor.active and self.selected and self.selected.properties.get("name") == "DUMMY_BETA":
+                self.tutorial_step = 9
+
+        elif self.tutorial_step == 9:
+            # Step 9: chmod -x on DUMMY_BETA
+            if self.selected and self.selected.properties.get("name") == "DUMMY_BETA":
+                if not self.selected.properties.get("hostile", True):
+                    self.tutorial_step = 10
+
+        elif self.tutorial_step == 10:
+            # Step 10: Select DUMMY_GAMMA (Terminar fechado)
+            if not self.code_editor.active:
+                if self.selected and self.selected.properties.get("name") == "DUMMY_GAMMA":
+                    self.tutorial_step = 11
+
+        elif self.tutorial_step == 11:
+            # Step 11: Smart Patch on DUMMY_GAMMA
+            if self.selected and self.selected.properties.get("name") == "DUMMY_GAMMA":
+                if (self.selected.properties.get("buffer_size") or 0) > 100:
+                    self.tutorial_step = 12
+
+        elif self.tutorial_step == 12:
+            # Step 12: Select self
+            if self.selected and self.selected.debug_label() == "Player":
+                self.player.properties["health"] = 45
+                self.tutorial_step = 13
+
+        elif self.tutorial_step == 13:
+            # Step 13: heal yourself (Terminal)
+            if self.player.properties.get("health", 0) >= 100:
+                self.tutorial_step = 14
+
+        elif self.tutorial_step == 14:
+            # Step 14: Select DUMMY_ALPHA again
+            if not self.code_editor.active:
+                if self.selected and self.selected.properties.get("name") == "DUMMY_ALPHA":
+                    self.tutorial_step = 15
+
+        elif self.tutorial_step == 15:
+            # Step 15: Purge DUMMY_ALPHA
+            alpha_alive = False
+            for e in self.loop.entities:
+                if e.properties.get("name") == "DUMMY_ALPHA" and e.properties.get("visible", True):
+                    alpha_alive = True
+                    break
+            if not alpha_alive:
+                self.tutorial_step = 16
     def render(self):
+        if self.tutorial_step != -1:
+            self._update_tutorial()
+
         self.camera.update(self.player)
         sw, sh = self.screen.get_width(), self.screen.get_height()
         shift = self.corruption.get_color_shift()
@@ -308,15 +429,15 @@ class Game:
             # Pula render de entidades "mortas" ou invisíveis
             if not e.should_render() or (e.properties.get("health", 1) is not None and e.properties.get("health", 1) <= 0):
                 continue
-                
+
             orig_x = e.properties.get("x", 0)
             orig_y = e.properties.get("y", 0)
-            
+
             cam_pos = self.camera.apply((orig_x, orig_y))
             e.properties["x"] = cam_pos[0] + glitch_off[0]
             e.properties["y"] = cam_pos[1] + glitch_off[1]
             e.render(self.screen)
-            
+
             e.properties["x"] = orig_x
             e.properties["y"] = orig_y
 
@@ -337,14 +458,19 @@ class Game:
         name = info.name if info else f"Nível {self.level_id}"
         path = info.path_hint if info else "/"
         self.hud.draw(self.screen, self.corruption, self.player, name, path)
-        
+
         # Chamada do Mini-mapa
         self.hud.draw_minimap(self.screen, self.loop.entities, self.player)
 
         peek_cut = self.debugger.peek_cut_key(self.selected) if self.selected else None
         peek_paste = self.debugger.peek_paste_destination(self.selected) if self.selected else None
-        
+
         self.hud.draw_debugger_gun_panel(self.screen, self.player, self.selected, self.debugger, peek_cut, peek_paste)
+
+        # Tutorial Prompt
+        if self.tutorial_step != -1:
+            self.hud.draw_tutorial_prompt(self.screen, self.tutorial_step)
+
         self.inspector.draw(self.screen, self.selected)
         self.console.draw(self.screen)
         self.code_editor.draw(self.screen)
@@ -353,7 +479,6 @@ class Game:
         self.corruption.draw_screen_glitches(self.screen)
 
         pygame.display.flip()
-
     def _check_objectives(self):
         exit_node = None
         boss_defeated = True
@@ -411,6 +536,12 @@ class Game:
                 if action == "quit":
                     pygame.quit()
                     return
+                if action == "tutorial_level":
+                    self.level_id = 0
+                    self.reset_system(self.level_id, carry_corruption=0.0)
+                    in_menu = False
+                    continue
+
                 if action == "tutorial":
                     if not menus.show_tutorial(self):
                         pygame.quit()

@@ -388,41 +388,47 @@ class DebuggerGun:
                 if entity.properties.get("name") == "OVERLORD_RECURSION":
                     if ("load" in command_str and entity.properties.get("load", 100) < 50) or \
                        ("speed" in command_str and entity.properties.get("speed", 0) > 15):
+                        entity.take_damage(80) # Dano massivo por vulnerabilidade
                         self.corruption.level = max(0.0, self.corruption.level - 0.05)
-                        return res + " (SABOTAGEM LIMPA)"
+                        return res + " (SABOTAGEM LIMPA: -80 HP)"
                 
                 # 2. NullMaster: speed = 0 ou color invertida
                 if entity.properties.get("name") == "NULL_MASTER.EXE":
                     if ("speed" in command_str and (entity.properties.get("speed", 1) or 1) <= 0.1) or \
                        ("color" in command_str and entity.properties.get("color", (255,0,0))[0] < 100):
+                        entity.take_damage(60)
                         self.corruption.level = max(0.0, self.corruption.level - 0.05)
-                        return res + " (INTERRUPÇÃO LIMPA)"
+                        return res + " (INTERRUPÇÃO LIMPA: -60 HP)"
                 
                 # 3. PanicCore: integrity_vulnerability ou identity conflict (reference)
                 if entity.properties.get("name") == "CORE_KERNEL_PANIC":
                     if "reference" in command_str:
+                        entity.take_damage(200)
                         self.corruption.level = max(0.0, self.corruption.level - 0.05)
-                        return res + " (CONFLITO DE IDENTIDADE LIMPO)"
+                        return res + " (CONFLITO DE IDENTIDADE LIMPO: -200 HP)"
 
                 # 4. MutexMaster: lock_state = 'UNLOCKED'
                 if entity.properties.get("name") == "MUTEX_MASTER_SYNC":
                     if "lock_state" in command_str and entity.properties.get("lock_state") == "UNLOCKED":
+                        entity.take_damage(120)
                         self.corruption.level = max(0.0, self.corruption.level - 0.05)
-                        return res + " (SINCRONIZAÇÃO LIBERADA)"
+                        return res + " (SINCRONIZAÇÃO LIBERADA: -120 HP)"
 
                 # 5. RegistryTyrant: access_level != 'ADMIN' ou registry_key
                 if entity.properties.get("name") == "REGISTRY_TYRANT_DB":
                     if ("access_level" in command_str and entity.properties.get("access_level") != "ADMIN") or \
                        ("registry_key" in command_str and "HKEY" not in str(entity.properties.get("registry_key", ""))):
+                        entity.take_damage(120)
                         self.corruption.level = max(0.0, self.corruption.level - 0.05)
-                        return res + " (PRIVILÉGIOS REVOGADOS)"
+                        return res + " (PRIVILÉGIOS REVOGADOS: -120 HP)"
 
                 # 6. FirewallDragon: port_status = 'OPEN' ou ip_source
                 if entity.properties.get("name") == "FIREWALL_DRAGON_NET":
                     if ("port_status" in command_str and entity.properties.get("port_status") == "OPEN") or \
                        ("ip_source" in command_str and entity.properties.get("ip_source") != "127.0.0.1"):
+                        entity.take_damage(150)
                         self.corruption.level = max(0.0, self.corruption.level - 0.05)
-                        return res + " (BRECHA DE REDE EXPOSTA)"
+                        return res + " (BRECHA DE REDE EXPOSTA: -150 HP)"
 
                 # Se não foi uma vulnerabilidade limpa, aplica a corrupção calculada
                 self.corruption.increase(base_corruption)

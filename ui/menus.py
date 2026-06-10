@@ -1,4 +1,6 @@
 import pygame
+import math
+import sys
 
 from config import FPS, RESOLUTIONS
 from persistence.storage import save_settings, load_state
@@ -10,7 +12,7 @@ def show_menu(game):
     font_title = pygame.font.SysFont("monospace", 60, bold=True)
     font_item = pygame.font.SysFont("monospace", 30)
 
-    options = ["Novo Jogo", "Seleção de Fases", "Configurações", "Manual (Como Jogar)", "Sair"]
+    options = ["Novo Jogo", "Seleção de Fases", "Tutorial Prático", "Manual do Sistema", "Configurações", "Sair"]
     selected_idx = 0
 
     while True:
@@ -26,7 +28,7 @@ def show_menu(game):
             text = f"> {option} <" if i == selected_idx else f"  {option}  "
             item_surf = font_item.render(text, True, color)
             x = sw // 2 - item_surf.get_width() // 2
-            y = sh // 2 - 50 + i * 50
+            y = sh // 2 - 80 + i * 50
             screen.blit(item_surf, (x, y))
             option_rects.append(pygame.Rect(x, y, item_surf.get_width(), item_surf.get_height()))
 
@@ -49,9 +51,10 @@ def show_menu(game):
                             if i == 0: # Novo Jogo
                                 if confirm_new_game(game): return "start"
                             if i == 1: return "select_level"
-                            if i == 2: return "settings"
+                            if i == 2: return "tutorial_level"
                             if i == 3: return "tutorial"
-                            if i == 4: return "quit"
+                            if i == 4: return "settings"
+                            if i == 5: return "quit"
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
@@ -64,9 +67,10 @@ def show_menu(game):
                     if selected_idx == 0:
                         if confirm_new_game(game): return "start"
                     if selected_idx == 1: return "select_level"
-                    if selected_idx == 2: return "settings"
+                    if selected_idx == 2: return "tutorial_level"
                     if selected_idx == 3: return "tutorial"
-                    if selected_idx == 4: return "quit"
+                    if selected_idx == 4: return "settings"
+                    if selected_idx == 5: return "quit"
         clock.tick(FPS)
 
 def confirm_new_game(game):
@@ -375,28 +379,61 @@ def show_tutorial(game):
             "- Use o comando 'purge' em inimigos comuns para reduzir corrupção.",
             "- Vença Bosses para uma limpeza profunda do Kernel."
         ],
-        # Página 8: Vulnerabilidades Críticas (BOSSES)
+        # Página 8: Vulnerabilidades Críticas (BOSSES - Parte 1)
         [
             "--- GUIA DE VULNERABILIDADES: BOSSES ---",
             "",
-            "1. NULL_MASTER (Fase 1, 4):",
+            "1. NULL_MASTER (Setor 1):",
             "   - STUN LÓGICO: Sete 'speed = 0' no terminal.",
             "   - ERRO CROMÁTICO: Use o comando 'invert' no terminal.",
             "     A inversão de cores causa choque de renderização.",
             "",
-            "2. RECURSIVE_OVERLORD (Fase 2, 5):",
+            "2. RECURSIVE_OVERLORD (Setor 2):",
             "   - SABOTAGEM DE CARGA: Reduza o 'load' para menos de 50.",
             "   - OVERCLOCK FATAL: Sete 'speed = 20' no terminal.",
             "     O excesso de ciclos causa superaquecimento e dano.",
             "",
-            "3. CORE_KERNEL_PANIC (Fase 3, 6, 7):",
+            "3. CORE_KERNEL_PANIC (Setor 3):",
             "   - SMART PATCHING: Use o Patch [P] repetidamente.",
             "   - CONFLITO DE IDENTIDADE: Recorte [T] seu 'token' e cole",
-            "     no núcleo [V]. Ele entrará em colapso de permissão.",
+            "     no núcleo [V]. Ele entrará em colapso de permissão."
+        ],
+        # Página 9: Vulnerabilidades Críticas (BOSSES - Parte 2)
+        [
+            "--- GUIA DE VULNERABILIDADES: BOSSES II ---",
+            "",
+            "4. MUTEX_MASTER (Setor 4):",
+            "   - LIBERAÇÃO DE LOCK: Use 'lock_state = UNLOCKED'.",
+            "     Isso remove o escudo e causa dano massivo de sincronia.",
+            "",
+            "5. REGISTRY_TYRANT (Setor 5):",
+            "   - REVOGAÇÃO DE ACESSO: Sete 'access_level = USER'.",
+            "   - PURGE DE REGISTRO: Mude 'registry_key' para 'NULL'.",
+            "     Sem chaves válidas, o tirano perde o controle do banco.",
+            "",
+            "6. FIREWALL_DRAGON (Setor 6):",
+            "   - BRECHA DE PORTA: Sete 'port_status = OPEN'.",
+            "   - SPOOFING DE IP: Mude 'ip_source' para seu próprio IP.",
+            "     O Firewall entra em conflito e desativa as defesas."
+        ],
+        # Página 10: O Rival e o Fim
+        [
+            "--- ALERTA: SENTINELA_ALPHA.ERR ---",
+            "",
+            "O RIVAL APARECE EM MOMENTOS CRÍTICOS (SETOR 7):",
+            "",
+            "DIFERENCIAL:",
+            "- Ele possui sua própria Debugger Gun.",
+            "- Pode copiar seus atributos e usá-los contra você.",
+            "",
+            "COMO VENCER:",
+            "- Use 'scan' para ver o que ele copiou de você.",
+            "- O comando 'hakai' é a única forma de apagá-lo totalmente,",
+            "  mas exige precisão e foco total no terminal.",
             "",
             "DICA: O manual mostra como vencer, mas sua habilidade define o sucesso!"
         ],
-        # Página 9: Táticas de Elite (Resumo)
+        # Página 11: Táticas de Elite (Resumo)
         [
             "--- RESUMO DE TÁTICAS DE ELITE ---",
             "",
@@ -435,7 +472,9 @@ def show_tutorial(game):
             "6. Setores",
             "7. Objetivos",
             "8. Fraquezas Boss",
-            "9. Táticas Elite"
+            "9. Fraquezas Boss II",
+            "10. O Rival",
+            "11. Táticas Elite"
         ]
         title_surf = font_title.render(titles[current_page], True, (0, 255, 255))
         screen.blit(title_surf, (sw // 2 - title_surf.get_width() // 2, 40))
@@ -496,6 +535,9 @@ def show_level_selection(game):
         "Fase 5: Registry Hive",
         "Fase 6: Firewall Gate",
         "Fase 7: Cloud Sync",
+        "Fase 8: Network Abyss",
+        "Fase 9: Mainframe Core",
+        "Fase 10: Singularity",
     ]
     selected_idx = 0
 
@@ -630,12 +672,61 @@ def show_ending(game):
     """Tela final de vitória após vencer o Setor 7."""
     screen = game.screen
     clock = game.clock
+    sw, sh = screen.get_width(), screen.get_height()
+    
     font_title = pygame.font.SysFont("monospace", 60, bold=True)
     font_text = pygame.font.SysFont("monospace", 24)
     font_small = pygame.font.SysFont("monospace", 18)
+    font_logs = pygame.font.SysFont("monospace", 18)
 
-    game.audio.play_music("menu") # Ou uma música de vitória se houver
+    game.audio.play_music("menu")
 
+    # 1. FASE DE LOGS DE SUCESSO
+    success_logs = [
+        "> TERMINATING RIVAL_SENTINEL.ERR...",
+        "> FLUSHING CORRUPTED CACHE...",
+        "> REBUILDING KERNEL_INDEX... [OK]",
+        "> RESTORING SECURITY_PROTOCOLS... [OK]",
+        "> SYSTEM INTEGRITY: 100.0%",
+        "> STATUS: SECURE.",
+        "> GOODBYE, OPERATOR."
+    ]
+    
+    lines_to_draw = []
+    for log in success_logs:
+        for i in range(len(log) + 1):
+            screen.fill((5, 10, 5))
+            for idx, line in enumerate(lines_to_draw):
+                txt = font_logs.render(line, True, (0, 255, 100))
+                screen.blit(txt, (40, 100 + idx * 25))
+            
+            current_txt = font_logs.render(log[:i] + "_", True, (200, 255, 200))
+            screen.blit(current_txt, (40, 100 + len(lines_to_draw) * 25))
+            
+            pygame.display.flip()
+            pygame.time.delay(20)
+            
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT: pygame.quit(); sys.exit()
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE: break
+        lines_to_draw.append(log)
+        pygame.time.delay(200)
+
+    pygame.time.delay(1000)
+
+    # 2. ALERTA DE SUCESSO
+    alert_font = pygame.font.SysFont("monospace", 40, bold=True)
+    for _ in range(3):
+        screen.fill((0, 50, 0))
+        txt = alert_font.render("!!! SISTEMA RESTAURADO !!!", True, (255, 255, 255))
+        screen.blit(txt, (sw//2 - txt.get_width()//2, sh//2 - 20))
+        pygame.display.flip()
+        pygame.time.delay(200)
+        screen.fill((5, 10, 5))
+        pygame.display.flip()
+        pygame.time.delay(200)
+
+    # 3. CRÉDITOS FINAIS COM GRID E PULSO
     credits = [
         "SISTEMA REESTRUTURADO COM SUCESSO",
         "---------------------------------",
@@ -657,17 +748,22 @@ def show_ending(game):
         "Pressione [ESCAPE] para retornar ao menu."
     ]
 
-    y_scroll = screen.get_height()
+    y_scroll = sh
 
     while True:
-        sw, sh = screen.get_width(), screen.get_height()
-        screen.fill((10, 20, 10)) # Verde escuro de sucesso
+        screen.fill((5, 10, 5))
+        # Grade de fundo sutil
+        for x in range(0, sw, 50): pygame.draw.line(screen, (10, 30, 10), (x, 0), (x, sh))
+        for y in range(0, sh, 50): pygame.draw.line(screen, (10, 30, 10), (0, y), (sw, y))
 
         title_surf = font_title.render("KERNEL.RESTORED", True, (0, 255, 100))
+        # Efeito de pulso no título
+        alpha = 155 + math.sin(pygame.time.get_ticks() * 0.005) * 100
+        title_surf.set_alpha(int(alpha))
         screen.blit(title_surf, (sw // 2 - title_surf.get_width() // 2, 50))
 
         for i, line in enumerate(credits):
-            color = (0, 255, 0) if "RESTORED" in line else (200, 255, 200)
+            color = (0, 255, 100) if "RESTORED" in line or "SUCESSO" in line else (200, 255, 200)
             text_surf = font_text.render(line, True, color)
             screen.blit(text_surf, (sw // 2 - text_surf.get_width() // 2, y_scroll + i * 40))
 
@@ -675,13 +771,13 @@ def show_ending(game):
 
         # Se terminar o scroll, para ou reinicia
         if y_scroll < -len(credits) * 40 - 100:
-             y_scroll = sh // 2
+             y_scroll = sh // 2 + 100
 
         pygame.display.flip()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit(); import sys; sys.exit()
+                pygame.quit(); sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE or event.key == pygame.K_RETURN:
                     return

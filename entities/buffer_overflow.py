@@ -16,8 +16,8 @@ class BufferOverflow(Entity):
             "w": 50,
             "h": 50,
             "buffer_size": 100,
-            "load": 50,
-            "speed": 2.2,
+            "load": random.randint(40, 110), # Carga randômica (pode vir em overflow)
+            "speed": 3.0, # Aumentado de 2.2
             "color": (255, 100, 0),
             "collision": True,
             "hostile": True

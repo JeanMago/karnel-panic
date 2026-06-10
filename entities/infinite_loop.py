@@ -23,7 +23,7 @@ class InfiniteLoop(Entity):
             "y": y,
             "w": 36,
             "h": 36,
-            "speed": speed,
+            "speed": 3.5, # Aumentado de 2.5
             "color": (255, 180, 0),
             "collision": True,
             "hostile": True,

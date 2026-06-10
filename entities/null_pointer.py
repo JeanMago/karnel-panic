@@ -18,7 +18,7 @@ class NullPointer(Entity):
             "y": y,
             "w": 40,
             "h": 40,
-            "speed": 3.5,
+            "speed": 4.5, # Aumentado de 3.5
             "reference": None,
             "visible": False,
             "color": (255, 80, 80),

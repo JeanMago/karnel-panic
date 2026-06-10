@@ -145,6 +145,46 @@ class HUD:
         label = self.font_small.render("NAV_SYSTEM.MAP", True, (0, 180, 255))
         screen.blit(label, (mx0, my0 + map_h + 5))
 
+    def draw_tutorial_prompt(self, screen, step):
+        """Exibe instruções passo a passo no centro da tela."""
+        prompts = [
+            "BEM-VINDO, SENTINELA. USE [ W, A, S, D ] PARA SE MOVER PELO KERNEL.",
+            "ALVO DETECTADO. CLIQUE COM O MOUSE NO 'DUMMY_ALPHA' (VERMELHO) PARA SELECIONÁ-LO.",
+            "EXCELENTE. AGORA PRESSIONE [ C ] PARA ABRIR O TERMINAL.",
+            "DIGITE 'dump' E PRESSIONE [ENTER] PARA VER TODAS AS VARIÁVEIS DO ALVO.",
+            "AGORA DIGITE 'scan' PARA UM RESUMO DE INTEGRIDADE (HP) E ESTADO.",
+            "EXCELENTE. PRESSIONE [ X ] PARA RECORTAR (CUT) A VELOCIDADE DO ALVO.",
+            "VALOR ARMAZENADO NO SLOT A. AGORA SELECIONE O 'DUMMY_BETA' (AMARELO).",
+            "ALVO MUDADO. PRESSIONE [ V ] PARA COLAR (PASTE) A VELOCIDADE NO 'DUMMY_BETA'.",
+            "MUITO BEM. ABRA O TERMINAL [ C ] NOVAMENTE COM O 'DUMMY_BETA' SELECIONADO.",
+            "DIGITE 'chmod -x' NO TERMINAL E [ENTER] PARA REMOVER A PERMISSÃO DE ATAQUE.",
+            "DUMMY_BETA NEUTRALIZADO. AGORA SELECIONE O 'DUMMY_GAMMA' (LARANJA).",
+            "ESSE ERRO É UM BUFFER OVERFLOW. PRESSIONE [ P ] PARA UM SMART PATCH DE CORREÇÃO.",
+            "ERRO CORRIGIDO! POR FIM, CLIQUE EM VOCÊ MESMO (SENTINELA) E ABRA O TERMINAL [ C ].",
+            "DIGITE 'heal' PARA RESTAURAR SUA PRÓPRIA INTEGRIDADE E LIMPAR RASTROS.",
+            "TUDO PRONTO! AGORA SELECIONE O 'DUMMY_ALPHA' NOVAMENTE.",
+            "DIGITE 'purge' NO TERMINAL PARA APAGÁ-LO DE FORMA LIMPA E CONCLUIR.",
+            "TREINAMENTO FINALIZADO. SIGA PARA A SAÍDA (CÍRCULO CIANO) PARA A MISSÃO REAL."
+        ]
+        
+        if 0 <= step < len(prompts):
+            sw, sh = screen.get_width(), screen.get_height()
+            txt = prompts[step]
+            
+            # Painel central superior
+            p_w = 700
+            p_h = 50
+            x = sw // 2 - p_w // 2
+            y = 120
+            
+            self._draw_cyber_rect(screen, (x, y, p_w, p_h), (20, 30, 40), alpha=220, border_color=(0, 255, 200))
+            
+            # Texto pulsante
+            alpha = 180 + int(math.sin(pygame.time.get_ticks() * 0.005) * 75)
+            surf = self.font_header.render(txt, True, (255, 255, 255))
+            surf.set_alpha(alpha)
+            screen.blit(surf, (sw // 2 - surf.get_width() // 2, y + 15))
+
     def draw(self, screen, corruption, player, level_name: str, path_hint: str):
         sw = screen.get_width()
         
