@@ -6,41 +6,57 @@ from config import CONSOLE_ZONE_HEIGHT, DEBUGGER_GAP_ABOVE_CONSOLE
 
 
 class HUD:
-    """Barra de corrupção, integridade, Debugger Gun (painel) e destaque da seleção."""
+    """
+    Classe responsável por desenhar a Interface de Usuário (HUD) durante o jogo.
+    
+    Elementos incluídos:
+    - Barra de integridade (HP) e Corrupção.
+    - Painel da Debugger Gun (informações de recorte/cola).
+    - Minimapa tático.
+    - Anel de seleção e feixe de mira.
+    - Prompts de tutorial passo a passo.
+    """
 
     def __init__(self):
+        # Inicializa as fontes utilizadas no HUD
         self.font = pygame.font.SysFont("consolas", 14)
         self.font_small = pygame.font.SysFont("consolas", 12)
         self.font_title = pygame.font.SysFont("consolas", 13, bold=True)
         self.font_header = pygame.font.SysFont("consolas", 16, bold=True)
 
     def _draw_cyber_rect(self, screen, rect, color, alpha=180, border_color=(0, 200, 200)):
-        """Desenha um painel com estilo futurista."""
+        """
+        Auxiliar para desenhar painéis com estilo futurista/cyber.
+        Desenha um retângulo preenchido com transparência e bordas acentuadas nos cantos.
+        """
         x, y, w, h = rect
         bg = pygame.Surface((w, h), pygame.SRCALPHA)
         bg.fill((*color, alpha))
         screen.blit(bg, (x, y))
         
-        # Bordas e cantos
+        # Desenha a borda principal
         pygame.draw.rect(screen, border_color, (x, y, w, h), 1)
         
-        # Cantos acentuados
-        cl = 15 # corner length
-        # Top Left
+        # Desenha detalhes brancos nos cantos para dar um aspecto tecnológico
+        cl = 15 # comprimento do canto (corner length)
+        # Superior Esquerdo
         pygame.draw.line(screen, (255, 255, 255), (x, y), (x + cl, y), 2)
         pygame.draw.line(screen, (255, 255, 255), (x, y), (x, y + cl), 2)
-        # Top Right
+        # Superior Direito
         pygame.draw.line(screen, (255, 255, 255), (x + w, y), (x + w - cl, y), 2)
         pygame.draw.line(screen, (255, 255, 255), (x + w, y), (x + w, y + cl), 2)
-        # Bottom Left
+        # Inferior Esquerdo
         pygame.draw.line(screen, (255, 255, 255), (x, y + h), (x + cl, y + h), 2)
         pygame.draw.line(screen, (255, 255, 255), (x, y + h), (x, y + h - cl), 2)
-        # Bottom Right
+        # Inferior Direito
         pygame.draw.line(screen, (255, 255, 255), (x + w, y + h), (x + w - cl, y + h), 2)
         pygame.draw.line(screen, (255, 255, 255), (x + w, y + h), (x + w, y + h - cl), 2)
 
     def draw_aim_link_with_camera(self, screen, player, selected, camera):
-        """Feixe fraco contínuo usando coordenadas da câmera."""
+        """
+        Desenha um feixe laser pulsante entre o jogador e a entidade selecionada.
+        Utiliza as coordenadas transformadas pela câmera para precisão visual.
+        """
         if not selected:
             return
         try:
@@ -51,7 +67,7 @@ class HUD:
         except:
             return
         
-        # Linha pulsante
+        # Efeito de pulso no feixe (transparência varia com o tempo)
         alpha = 50 + int(math.sin(pygame.time.get_ticks() * 0.01) * 30)
         color = (0, 255, 200, alpha)
         
@@ -61,7 +77,10 @@ class HUD:
         screen.blit(surf, (0, 0))
 
     def draw_selection_ring_fixed(self, screen, cam_x, cam_y, w, h):
-        """Desenha o anel usando coordenadas já transformadas pela câmera."""
+        """
+        Desenha um retângulo de seleção em volta da entidade focada.
+        O anel possui marcações nos cantos que piscam sutilmente.
+        """
         pad = 6
         rect = (cam_x - pad, cam_y - pad, w + pad * 2, h + pad * 2)
         
@@ -79,17 +98,26 @@ class HUD:
         pygame.draw.rect(screen, (255, 255, 255), (x+rw-cl+2, y+rh-cl+2, cl, cl))
 
     def draw_minimap(self, screen, entities, player):
-        """Desenha um mini-mapa tático no canto superior direito."""
+        """
+        Desenha um mini-mapa tático no canto superior direito da tela.
+        
+        Funcionamento:
+        - Mapeia as coordenadas do mundo (4000x3000) para o tamanho do painel do mapa (200x150).
+        - Representa o jogador como um ponto verde.
+        - Representa inimigos como pontos laranjas.
+        - Representa o Boss como um ponto vermelho grande.
+        - Representa a saída do nível com efeitos de pulso se estiver ativa.
+        """
         sw, sh = screen.get_width(), screen.get_height()
         map_w, map_h = 200, 150
         padding = 15
         mx0 = sw - map_w - padding
         my0 = padding
         
-        # Desenha container do mapa
+        # Desenha o fundo do mapa
         self._draw_cyber_rect(screen, (mx0, my0, map_w, map_h), (5, 10, 15), alpha=160, border_color=(0, 150, 255))
         
-        # Dimensões do Mundo (baseado em core/levels.py)
+        # Dimensões lógicas do mundo para cálculo de proporção
         WORLD_W, WORLD_H = 4000, 3000
         
         # Função para converter coord de mundo para coord de minimapa
@@ -98,9 +126,9 @@ class HUD:
             ry = my0 + (wy / WORLD_H) * map_h
             return int(rx), int(ry)
 
-        # Desenha entidades no mapa
+        # Itera sobre todas as entidades para desenhá-las no mapa
         for e in entities:
-            # Pula obstáculos comuns para não poluir
+            # Pula obstáculos invisíveis ou bordas para manter o mapa limpo
             tipo = e.properties.get("tipo")
             if tipo == "Boundary" or (tipo is None and e.debug_label() == "Obstacle"):
                 continue
@@ -134,7 +162,7 @@ class HUD:
             
             pygame.draw.circle(screen, dot_color, (mx, my), dot_size)
 
-        # Desenha o Player (Sempre por cima)
+        # Desenha o Player (Sempre por cima de tudo no mapa)
         px, py = player.properties.get("x", 0), player.properties.get("y", 0)
         pmx, pmy = to_map(px, py)
         pygame.draw.circle(screen, (0, 255, 100), (pmx, pmy), 4) # Ponto Verde
@@ -146,7 +174,10 @@ class HUD:
         screen.blit(label, (mx0, my0 + map_h + 5))
 
     def draw_tutorial_prompt(self, screen, step):
-        """Exibe instruções passo a passo no centro da tela."""
+        """
+        Exibe instruções na tela durante o nível de tutorial prático.
+        Cada 'step' corresponde a uma instrução diferente guiando o jogador.
+        """
         prompts = [
             "BEM-VINDO, SENTINELA. USE [ W, A, S, D ] PARA SE MOVER PELO KERNEL.",
             "ALVO DETECTADO. CLIQUE COM O MOUSE NO 'DUMMY_ALPHA' (VERMELHO) PARA SELECIONÁ-LO.",
@@ -171,7 +202,7 @@ class HUD:
             sw, sh = screen.get_width(), screen.get_height()
             txt = prompts[step]
             
-            # Painel central superior
+            # Painel central superior para o tutorial
             p_w = 700
             p_h = 50
             x = sw // 2 - p_w // 2
@@ -179,16 +210,19 @@ class HUD:
             
             self._draw_cyber_rect(screen, (x, y, p_w, p_h), (20, 30, 40), alpha=220, border_color=(0, 255, 200))
             
-            # Texto pulsante
+            # Texto pulsante para chamar a atenção
             alpha = 180 + int(math.sin(pygame.time.get_ticks() * 0.005) * 75)
             surf = self.font_header.render(txt, True, (255, 255, 255))
             surf.set_alpha(alpha)
             screen.blit(surf, (sw // 2 - surf.get_width() // 2, y + 15))
 
     def draw(self, screen, corruption, player, level_name: str, path_hint: str):
+        """
+        Desenha os elementos fixos do HUD: Nome da fase, HP e Barra de Corrupção.
+        """
         sw = screen.get_width()
         
-        # Painel Superior Esquerdo (Status)
+        # Painel Superior Esquerdo (Status do Sistema)
         panel_w = 400
         panel_h = 100
         self._draw_cyber_rect(screen, (10, 10, panel_w, panel_h), (10, 20, 30))
@@ -197,35 +231,45 @@ class HUD:
         title = self.font_header.render(level_name.upper(), True, (0, 255, 255))
         screen.blit(title, (x, y))
         
+        # Exibe o "caminho" do sistema (estético)
         hint = self.font_small.render(path_hint, True, (0, 150, 150))
         screen.blit(hint, (x, y + 20))
 
-        # Barra de Integridade (Vida)
+        # Barra de Integridade (HP do Jogador)
         hp = player.properties.get("health", 100)
         hp_pct = max(0.0, min(1.0, hp / 100.0))
         hp_bar_w = 150
         
-        pygame.draw.rect(screen, (40, 0, 0), (x, y + 45, hp_bar_w, 12))
-        pygame.draw.rect(screen, (0, 255, 100), (x, y + 45, int(hp_bar_w * hp_pct), 12))
+        pygame.draw.rect(screen, (40, 0, 0), (x, y + 45, hp_bar_w, 12)) # Fundo barra
+        pygame.draw.rect(screen, (0, 255, 100), (x, y + 45, int(hp_bar_w * hp_pct), 12)) # HP atual
         hp_label = self.font_small.render(f"INTEGRIDADE: {int(hp)}%", True, (150, 255, 200))
         screen.blit(hp_label, (x + hp_bar_w + 10, y + 43))
 
-        # Barra de Corrupção
+        # Barra de Corrupção (Instabilidade do Sistema)
         cp_pct = max(0.0, min(1.0, corruption.level))
-        pygame.draw.rect(screen, (20, 20, 20), (x, y + 65, hp_bar_w, 12))
-        pygame.draw.rect(screen, (255, 50, 80), (x, y + 65, int(hp_bar_w * cp_pct), 12))
+        pygame.draw.rect(screen, (20, 20, 20), (x, y + 65, hp_bar_w, 12)) # Fundo barra
+        pygame.draw.rect(screen, (255, 50, 80), (x, y + 65, int(hp_bar_w * cp_pct), 12)) # Corrupção atual
         cp_label = self.font_small.render(f"CORRUPÇÃO: {cp_pct*100:.1f}%", True, (255, 150, 150))
         screen.blit(cp_label, (x + hp_bar_w + 10, y + 63))
 
     def draw_debugger_gun_panel(
         self, screen, player, selected, debugger, peek_cut, peek_paste
     ):
+        """
+        Desenha o painel inferior esquerdo com as informações da Debugger Gun.
+        
+        Mostra:
+        - Atalhos de teclado (Recorte/Cola/Patch/Terminal).
+        - Status do Clipboard (Slot A e B).
+        - Alvo selecionado no momento e o que pode ser feito com ele.
+        """
         sw = screen.get_width()
         sh = screen.get_height()
         panel_w = 460
         panel_h = 180
         zh = min(CONSOLE_ZONE_HEIGHT, max(96, sh // 5))
         x0 = 10
+        # Posicionamento dinâmico acima da zona do console
         y0 = sh - zh - DEBUGGER_GAP_ABOVE_CONSOLE - panel_h
         y0 = max(120, y0)
 
@@ -234,6 +278,7 @@ class HUD:
         title = self.font_header.render("DEBUGGER_GUN.EXE v2.0", True, (0, 255, 180))
         screen.blit(title, (x0 + 15, y0 + 12))
 
+        # Lista de comandos disponíveis
         lines = [
             " [L-CLICK] Mirar | [R-CLICK] Selecionar",
             " [TAB] Alternar Clipboard (A/B)",
@@ -246,14 +291,15 @@ class HUD:
             screen.blit(t, (x0 + 10, y))
             y += 16
 
-        # Clipboard Status
+        # Exibição do conteúdo dos slots A e B da área de transferência
         buf_y = y0 + 105
         for bline in debugger.buffer_status_lines():
+            # Destaque em azul para o slot ativo (indicado por ►)
             col = (0, 220, 255) if bline.startswith("►") else (100, 150, 180)
             screen.blit(self.font_small.render(bline, True, col), (x0 + 15, buf_y))
             buf_y += 15
 
-        # Alvo Atual
+        # Informações sobre o alvo selecionado
         if selected:
             status_col = (100, 255, 150)
             target_name = selected.debug_label().upper()
@@ -261,6 +307,7 @@ class HUD:
             tgt_surf = self.font_title.render(f"ACTIVE_TARGET: {target_name}", True, status_col)
             screen.blit(tgt_surf, (x0 + 15, buf_y + 5))
             
+            # Mostra prévia do que será recortado ou colado
             cut_k = peek_cut or "NONE"
             pst = peek_paste or "NONE"
             hint = f"REQ: {cut_k} | DEST: {pst}"
@@ -270,7 +317,9 @@ class HUD:
             screen.blit(warn, (x0 + 15, buf_y + 10))
 
     def draw_aim_link(self, screen, player, selected):
-        """Feixe fraco contínuo: indica que a 'arma' está apontando para o alvo."""
+        """
+        Versão estática do feixe de mira (sem câmera, usado se necessário).
+        """
         if not selected:
             return
         try:
@@ -288,6 +337,9 @@ class HUD:
         screen.blit(surf, (0, 0))
 
     def draw_selection_ring(self, screen, entity):
+        """
+        Versão estática do anel de seleção.
+        """
         if not entity:
             return
         try:
@@ -300,4 +352,3 @@ class HUD:
         pad = 6
         rect = (ex - pad, ey - pad, ew + pad * 2, eh + pad * 2)
         pygame.draw.rect(screen, (0, 255, 120), rect, 2)
-

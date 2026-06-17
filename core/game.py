@@ -515,15 +515,20 @@ class Game:
                 curr_max = int(self.saved.get("max_level", 1))
                 new_max = max(curr_max, next_level)
                 
-                if self.level_id == 7:
+                # Se venceu o último nível (10)
+                if self.level_id == 10:
                     self.console.log("!!! KERNEL TOTALMENTE REESTRUTURADO !!!")
                     pygame.time.delay(1000)
                     menus.show_ending(self)
-                    next_level = 1
-                
+                    save_state(0.0, 1, new_max)
+                    return "menu" # Sinaliza retorno ao menu principal
+
                 curr_corruption = self.corruption.level
                 save_state(curr_corruption, next_level, new_max)
+                # Atualiza o estado interno para que os menus vejam o novo max_level imediatamente
+                self.saved["max_level"] = new_max
                 self.reset_system(next_level, carry_corruption=curr_corruption)
+        return None
 
     def run(self):
         while True:
@@ -621,7 +626,9 @@ class Game:
 
                     self.loop.update(dt)
                     self._apply_corruption_to_entities()
-                    self._check_objectives()
+                    if self._check_objectives() == "menu":
+                        running = False
+                        break
                     
                     # Colisão e movimento para todas as entidades móveis
                     for e in self.loop.entities:
